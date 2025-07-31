@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+README.md
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache
+.coverage
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs (будут созданы в контейнере)
+logs/*
+!logs/.gitkeep
+
+# Temporary files
+*.tmp
+*.log
+*.pid
+
+# Node modules (если есть)
+node_modules/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

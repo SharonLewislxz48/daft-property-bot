@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  daftparser-bot:
+    build: .
+    container_name: daftparser_bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - DATABASE_PATH=/app/data/enhanced_bot.db
+      - LOG_LEVEL=INFO
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    networks:
+      - daftparser_network
+
+networks:
+  daftparser_network:
+    driver: bridge
+
+volumes:
+  bot_data:
+  bot_logs:
