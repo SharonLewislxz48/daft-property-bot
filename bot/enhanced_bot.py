@@ -857,24 +857,11 @@ class EnhancedPropertyBot:
         await callback.answer(f"✅ Добавлен: {region_name}")
 
     async def callback_show_all_results(self, callback: CallbackQuery):
-        """Показать все найденные объявления"""
-        user_id = callback.from_user.id
+        """Показать все найденные объявления - всегда отправляет в группу"""
+        GROUP_CHAT_ID = -1002819366953  # Жестко закодированный ID группы
         
-        # Получаем настройки пользователя для определения правильного chat_id
-        settings = await self.db.get_user_settings(user_id)
-        if not settings:
-            await callback.message.edit_text(
-                "❌ Настройки пользователя не найдены",
-                reply_markup=get_main_menu_keyboard()
-            )
-            await callback.answer()
-            return
-        
-        # Используем chat_id из настроек пользователя
-        target_chat_id = settings['chat_id']
-        
-        # Получаем кэшированные результаты
-        results = await self.db.get_cached_search_results(user_id)
+        # Получаем кэшированные результаты (используем любой user_id, так как результаты одинаковые)
+        results = await self.db.get_cached_search_results(1665845754)  # Или любой другой ID
         
         if not results:
             await callback.message.edit_text(
@@ -885,22 +872,19 @@ class EnhancedPropertyBot:
             return
         
         await callback.message.edit_text(
-            f"📤 **Отправляю {len(results)} объявлений...**",
+            f"📤 **Отправляю {len(results)} объявлений в группу...**",
             parse_mode="Markdown"
         )
         await callback.answer()
         
-        # Отправляем в правильный чат из настроек пользователя
-        logger.info(f"Отправляем {len(results)} объявлений пользователю {user_id} в чат {target_chat_id}")
-        await self._send_new_properties(user_id, results, target_chat_id)
-        
-        # Определяем тип чата для сообщения
-        chat_type = "группу" if target_chat_id < 0 else "личные сообщения"
+        # Отправляем всегда в группу
+        logger.info(f"Отправляем {len(results)} объявлений в группу {GROUP_CHAT_ID}")
+        await self._send_new_properties(1665845754, results, GROUP_CHAT_ID)
         
         await callback.message.edit_text(
             f"✅ **Отправлено!**\n\n"
-            f"📤 {len(results)} объявлений отправлено в {chat_type}\n"
-            f"💬 Chat ID: {target_chat_id}",
+            f"📤 {len(results)} объявлений отправлено в группу\n"
+            f"💬 Chat ID: {GROUP_CHAT_ID}",
             reply_markup=get_main_menu_keyboard(),
             parse_mode="Markdown"
         )

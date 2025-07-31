@@ -407,17 +407,19 @@ class EnhancedDatabase:
         return []
 
     async def cache_search_results(self, user_id: int, results: List[Dict[str, Any]]):
-        """Кэширует результаты поиска для последующего показа"""
+        """Кэширует результаты поиска для последующего показа - глобальный кэш для группы"""
         # Простой кэш в памяти (в реальном проекте лучше использовать Redis)
         if not hasattr(self, '_search_cache'):
             self._search_cache = {}
         
-        self._search_cache[user_id] = results
-        logger.info(f"Кэшированы результаты поиска для пользователя {user_id}: {len(results)} объявлений")
+        # Используем фиксированный ключ для группы вместо user_id
+        self._search_cache['group_results'] = results
+        logger.info(f"Кэшированы результаты поиска для группы: {len(results)} объявлений")
 
     async def get_cached_search_results(self, user_id: int) -> List[Dict[str, Any]]:
-        """Получает кэшированные результаты поиска"""
+        """Получает кэшированные результаты поиска - глобальный кэш для группы"""
         if not hasattr(self, '_search_cache'):
             return []
         
-        return self._search_cache.get(user_id, [])
+        # Возвращаем результаты из глобального кэша группы
+        return self._search_cache.get('group_results', [])
