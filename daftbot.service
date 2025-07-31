@@ -1,0 +1,17 @@
+[Unit]
+Description=Daft.ie Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/barss/PycharmProjects/daftparser
+Environment=PATH=/home/barss/PycharmProjects/daftparser/venv/bin
+ExecStart=/home/barss/PycharmProjects/daftparser/venv/bin/python main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,63 @@
+{
+  "default_search": {
+    "min_bedrooms": 3,
+    "max_price": 2500,
+    "location": "dublin",
+    "property_type": "all",
+    "max_results": 10
+  },
+  "bot_settings": {
+    "max_properties_per_message": 3,
+    "include_urls_in_summary": false,
+    "include_descriptions": true,
+    "show_ber_rating": true,
+    "log_level": "WARNING"
+  },
+  "locations": {
+    "dublin": "dublin-city",
+    "cork": "cork",
+    "galway": "galway",
+    "limerick": "limerick",
+    "waterford": "waterford"
+  },
+  "property_types": {
+    "all": "all",
+    "houses": "houses",
+    "apartments": "apartments",
+    "studios": "apartments"
+  },
+  "price_ranges": {
+    "budget": 1500,
+    "mid": 2500,
+    "premium": 4000,
+    "luxury": 6000
+  },
+  "bedroom_options": [1, 2, 3, 4, 5],
+  "response_templates": {
+    "no_results": "❌ К сожалению, по вашим критериям ничего не найдено. Попробуйте изменить параметры поиска.",
+    "error": "⚠️ Произошла ошибка при поиске. Попробуйте позже.",
+    "too_many_results": "🔍 Найдено слишком много результатов. Показываю первые {count}. Уточните критерии для более точного поиска.",
+    "search_started": "🔍 Ищу недвижимость... Это может занять несколько секунд.",
+    "search_completed": "✅ Поиск завершен! Найдено {count} объявлений."
+  },
+  "quick_commands": {
+    "дома дублин": {
+      "min_bedrooms": 3,
+      "max_price": 2500,
+      "location": "dublin",
+      "property_type": "houses"
+    },
+    "квартиры дублин": {
+      "min_bedrooms": 2,
+      "max_price": 2000,
+      "location": "dublin", 
+      "property_type": "apartments"
+    },
+    "бюджетное жилье": {
+      "min_bedrooms": 1,
+      "max_price": 1500,
+      "location": "dublin",
+      "property_type": "all"
+    }
+  }
+}

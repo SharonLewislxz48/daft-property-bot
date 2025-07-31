@@ -165,6 +165,7 @@ class EnhancedPropertyBot:
         
         user = await self.db.get_or_create_user(
             user_id=message.from_user.id,
+            chat_id=message.chat.id,  # Добавляем ID чата
             username=message.from_user.username,
             first_name=message.from_user.first_name,
             last_name=message.from_user.last_name
@@ -328,6 +329,10 @@ class EnhancedPropertyBot:
     async def callback_start_monitoring(self, callback: CallbackQuery):
         """Запуск автоматического мониторинга"""
         user_id = callback.from_user.id
+        chat_id = callback.message.chat.id
+        
+        # Обновляем chat_id в настройках пользователя
+        await self.db.update_user_settings(user_id, chat_id=chat_id)
         
         # Проверяем, не запущен ли уже мониторинг
         if user_id in self.monitoring_tasks and not self.monitoring_tasks[user_id].done():
@@ -352,7 +357,7 @@ class EnhancedPropertyBot:
         await self.db.update_user_settings(user_id, is_monitoring_active=True)
         
         # Запускаем задачу мониторинга
-        task = asyncio.create_task(self._monitoring_loop(user_id, settings))
+        task = asyncio.create_task(self._monitoring_loop(user_id))
         self.monitoring_tasks[user_id] = task
         
         interval_text = self._format_interval(settings["monitoring_interval"])
@@ -398,6 +403,11 @@ class EnhancedPropertyBot:
     async def callback_single_search(self, callback: CallbackQuery):
         """Разовый поиск"""
         user_id = callback.from_user.id
+        chat_id = callback.message.chat.id
+        
+        # Обновляем chat_id в настройках пользователя
+        await self.db.update_user_settings(user_id, chat_id=chat_id)
+        
         settings = await self.db.get_user_settings(user_id)
         
         if not settings:
@@ -431,8 +441,9 @@ class EnhancedPropertyBot:
                 )
                 
                 if new_properties:
-                    # Отправляем новые объявления
-                    await self._send_new_properties(user_id, new_properties)
+                    # Отправляем новые объявления в тот же чат
+                    chat_id = settings.get("chat_id", callback.message.chat.id)
+                    await self._send_new_properties(user_id, new_properties, chat_id)
                     
                     await callback.message.edit_text(
                         f"✅ **Поиск завершен!**\\n\\n"
@@ -519,13 +530,19 @@ class EnhancedPropertyBot:
         
         return all_results
     
-    async def _monitoring_loop(self, user_id: int, settings: Dict[str, Any]):
+    async def _monitoring_loop(self, user_id: int):
         """Основной цикл мониторинга"""
         logger.info(f"Запущен мониторинг для пользователя {user_id}")
         
         while True:
             try:
                 start_time = time.time()
+                
+                # Получаем актуальные настройки пользователя
+                settings = await self.db.get_user_settings(user_id)
+                if not settings:
+                    logger.error(f"Настройки пользователя {user_id} не найдены, останавливаем мониторинг")
+                    break
                 
                 # Выполняем поиск
                 results = await self._perform_search(settings)
@@ -543,11 +560,12 @@ class EnhancedPropertyBot:
                     
                     if new_properties:
                         # Отправляем новые объявления пользователю
-                        await self._send_new_properties(user_id, new_properties)
+                        await self._send_new_properties(user_id, new_properties, settings.get("chat_id", user_id))
                         
-                        # Уведомление о мониторинге
+                        # Уведомление о мониторинге - отправляем в тот же чат
+                        chat_id = settings.get("chat_id", user_id)
                         await self.bot.send_message(
-                            user_id,
+                            chat_id,
                             f"🔍 **Мониторинг:** найдено {len(new_properties)} новых объявлений!",
                             parse_mode="Markdown"
                         )
@@ -563,25 +581,32 @@ class EnhancedPropertyBot:
             except Exception as e:
                 logger.error(f"Ошибка в мониторинге пользователя {user_id}: {e}")
                 
-                # Логируем ошибку
-                await self.db.log_monitoring_session(
-                    user_id, self._get_search_params(settings), 0, 0, 0, "error", str(e)
-                )
-                
-                # Ждем перед повторной попыткой
-                await asyncio.sleep(settings["monitoring_interval"])
+                # Получаем настройки для логирования ошибки
+                settings = await self.db.get_user_settings(user_id)
+                if settings:
+                    # Логируем ошибку
+                    await self.db.log_monitoring_session(
+                        user_id, self._get_search_params(settings), 0, 0, 0, "error", str(e)
+                    )
+                    
+                    # Ждем перед повторной попыткой
+                    await asyncio.sleep(settings["monitoring_interval"])
+                else:
+                    logger.error(f"Не удалось получить настройки для пользователя {user_id}")
+                    break
     
-    async def _send_new_properties(self, user_id: int, properties: List[Dict[str, Any]]):
-        """Отправляет новые объявления пользователю"""
+    async def _send_new_properties(self, user_id: int, properties: List[Dict[str, Any]], chat_id: int = None):
+        """Отправляет новые объявления в указанный чат"""
         sent_urls = []
+        target_chat = chat_id or user_id  # Используем chat_id, если задан, иначе user_id
         
         for prop in properties:
             try:
                 message = self._format_property_message(prop)
-                await self.bot.send_message(user_id, message, parse_mode="Markdown")
+                await self.bot.send_message(target_chat, message, parse_mode="Markdown")
                 sent_urls.append(prop["url"])
             except Exception as e:
-                logger.error(f"Ошибка отправки объявления пользователю {user_id}: {e}")
+                logger.error(f"Ошибка отправки объявления в чат {target_chat}: {e}")
         
         # Отмечаем отправленные объявления
         if sent_urls:
