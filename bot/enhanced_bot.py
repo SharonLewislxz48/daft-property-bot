@@ -453,8 +453,10 @@ class EnhancedPropertyBot:
                 )
                 
                 if new_properties:
-                    # Отправляем новые объявления в текущий чат
-                    await self._send_new_properties(user_id, new_properties, chat_id)
+                    # Отправляем новые объявления в правильный чат из настроек
+                    target_chat_id = settings['chat_id']
+                    logger.info(f"Отправляем {len(new_properties)} новых объявлений пользователю {user_id} в чат {target_chat_id}")
+                    await self._send_new_properties(user_id, new_properties, target_chat_id)
                     
                     await callback.message.edit_text(
                         f"✅ **Поиск завершен!**\\n\\n"
@@ -615,6 +617,8 @@ class EnhancedPropertyBot:
         """Отправляет новые объявления в указанный чат"""
         sent_urls = []
         target_chat = chat_id or user_id  # Используем chat_id, если задан, иначе user_id
+        
+        logger.info(f"📤 Отправляем {len(properties)} объявлений пользователю {user_id} в чат {target_chat}")
         
         # Получаем информацию о пользователе только для специальной целевой группы
         user_info = ""
@@ -853,7 +857,19 @@ class EnhancedPropertyBot:
     async def callback_show_all_results(self, callback: CallbackQuery):
         """Показать все найденные объявления"""
         user_id = callback.from_user.id
-        chat_id = callback.message.chat.id  # ID чата, где была нажата кнопка
+        
+        # Получаем настройки пользователя для определения правильного chat_id
+        settings = await self.db.get_user_settings(user_id)
+        if not settings:
+            await callback.message.edit_text(
+                "❌ Настройки пользователя не найдены",
+                reply_markup=get_main_menu_keyboard()
+            )
+            await callback.answer()
+            return
+        
+        # Используем chat_id из настроек пользователя
+        target_chat_id = settings['chat_id']
         
         # Получаем кэшированные результаты
         results = await self.db.get_cached_search_results(user_id)
@@ -872,12 +888,17 @@ class EnhancedPropertyBot:
         )
         await callback.answer()
         
-        # Отправляем в тот же чат, где была нажата кнопка
-        await self._send_new_properties(user_id, results, chat_id)
+        # Отправляем в правильный чат из настроек пользователя
+        logger.info(f"Отправляем {len(results)} объявлений пользователю {user_id} в чат {target_chat_id}")
+        await self._send_new_properties(user_id, results, target_chat_id)
+        
+        # Определяем тип чата для сообщения
+        chat_type = "группу" if target_chat_id < 0 else "личные сообщения"
         
         await callback.message.edit_text(
             f"✅ **Отправлено!**\n\n"
-            f"📤 {len(results)} объявлений отправлено в {'группу' if chat_id < 0 else 'личные сообщения'}",
+            f"📤 {len(results)} объявлений отправлено в {chat_type}\n"
+            f"💬 Chat ID: {target_chat_id}",
             reply_markup=get_main_menu_keyboard(),
             parse_mode="Markdown"
         )
