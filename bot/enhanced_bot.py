@@ -18,7 +18,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from database.enhanced_database import EnhancedDatabase
 from production_parser import ProductionDaftParser
-from config.regions import ALL_LOCATIONS, DEFAULT_SETTINGS, LIMITS
+from config.regions import ALL_LOCATIONS, DEFAULT_SETTINGS, LIMITS, TARGET_GROUP_ID
 from bot.enhanced_keyboards import (
     get_main_menu_keyboard, get_settings_menu_keyboard, get_regions_menu_keyboard,
     get_region_categories_keyboard, get_category_regions_keyboard, 
@@ -441,9 +441,8 @@ class EnhancedPropertyBot:
                 )
                 
                 if new_properties:
-                    # Отправляем новые объявления в тот же чат
-                    chat_id = settings.get("chat_id", callback.message.chat.id)
-                    await self._send_new_properties(user_id, new_properties, chat_id)
+                    # Отправляем новые объявления в целевую группу
+                    await self._send_new_properties(user_id, new_properties, TARGET_GROUP_ID)
                     
                     await callback.message.edit_text(
                         f"✅ **Поиск завершен!**\\n\\n"
@@ -559,14 +558,13 @@ class EnhancedPropertyBot:
                     )
                     
                     if new_properties:
-                        # Отправляем новые объявления пользователю
-                        await self._send_new_properties(user_id, new_properties, settings.get("chat_id", user_id))
+                        # Отправляем новые объявления в целевую группу
+                        await self._send_new_properties(user_id, new_properties, TARGET_GROUP_ID)
                         
-                        # Уведомление о мониторинге - отправляем в тот же чат
-                        chat_id = settings.get("chat_id", user_id)
+                        # Уведомление о мониторинге - отправляем в целевую группу
                         await self.bot.send_message(
-                            chat_id,
-                            f"🔍 **Мониторинг:** найдено {len(new_properties)} новых объявлений!",
+                            TARGET_GROUP_ID,
+                            f"🔍 **Мониторинг пользователя {user_id}:** найдено {len(new_properties)} новых объявлений!",
                             parse_mode="Markdown"
                         )
                     else:
@@ -600,9 +598,35 @@ class EnhancedPropertyBot:
         sent_urls = []
         target_chat = chat_id or user_id  # Используем chat_id, если задан, иначе user_id
         
+        # Получаем информацию о пользователе для группового чата
+        user_info = ""
+        if target_chat == TARGET_GROUP_ID:
+            try:
+                # Получаем информацию о пользователе из базы
+                import aiosqlite
+                async with aiosqlite.connect(self.db.db_path) as db:
+                    async with db.execute(
+                        "SELECT username, first_name FROM users WHERE user_id = ?", (user_id,)
+                    ) as cursor:
+                        user_row = await cursor.fetchone()
+                    
+                    if user_row:
+                        username, first_name = user_row
+                        if username:
+                            user_info = f"\n👤 От пользователя: @{username}"
+                        elif first_name:
+                            user_info = f"\n👤 От пользователя: {first_name}"
+                        else:
+                            user_info = f"\n👤 От пользователя: {user_id}"
+                    else:
+                        user_info = f"\n👤 От пользователя: {user_id}"
+            except Exception as e:
+                logger.error(f"Ошибка получения информации о пользователе {user_id}: {e}")
+                user_info = f"\n👤 От пользователя: {user_id}"
+        
         for prop in properties:
             try:
-                message = self._format_property_message(prop)
+                message = self._format_property_message(prop, user_info)
                 await self.bot.send_message(target_chat, message, parse_mode="Markdown")
                 sent_urls.append(prop["url"])
             except Exception as e:
@@ -612,7 +636,7 @@ class EnhancedPropertyBot:
         if sent_urls:
             await self.db.mark_properties_as_sent(user_id, sent_urls)
     
-    def _format_property_message(self, prop: Dict[str, Any]) -> str:
+    def _format_property_message(self, prop: Dict[str, Any], user_info: str = "") -> str:
         """Форматирует объявление для отправки"""
         title = prop.get('title', 'Без названия')
         price = f"€{prop['price']}" if prop.get('price') else 'Цена не указана'
@@ -626,8 +650,14 @@ class EnhancedPropertyBot:
             f"💰 {price}\\n"
             f"🛏️ {bedrooms}\\n"
             f"📍 {location}\\n"
-            f"🏠 {property_type}\\n\\n"
+            f"🏠 {property_type}"
         )
+        
+        # Добавляем информацию о пользователе, если есть
+        if user_info:
+            message += user_info
+        
+        message += "\\n\\n"
         
         if prop.get('description'):
             desc = prop['description'][:150] + "..." if len(prop['description']) > 150 else prop['description']

@@ -162,3 +162,6 @@ REGION_CATEGORIES = {
     "republic_of_ireland": {k: v for k, v in COUNTIES.items() 
                            if k not in ["antrim", "armagh", "derry", "down", "fermanagh", "tyrone"]}
 }
+
+# Настройки для отправки сообщений
+TARGET_GROUP_ID = -1002819366953  # ID группы для отправки всех результатов
