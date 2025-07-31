@@ -131,6 +131,9 @@ class EnhancedPropertyBot:
             F.data.startswith("stats_")
         )
         
+        # Показ всех результатов
+        self.dp.callback_query.register(self.callback_show_all_results, F.data == "show_all_results")
+        
         # Состояния FSM
         self.dp.message.register(
             self.process_custom_price,
@@ -441,8 +444,8 @@ class EnhancedPropertyBot:
                 )
                 
                 if new_properties:
-                    # Отправляем новые объявления в целевую группу
-                    await self._send_new_properties(user_id, new_properties, TARGET_GROUP_ID)
+                    # Отправляем новые объявления в текущий чат
+                    await self._send_new_properties(user_id, new_properties, chat_id)
                     
                     await callback.message.edit_text(
                         f"✅ **Поиск завершен!**\\n\\n"
@@ -561,13 +564,14 @@ class EnhancedPropertyBot:
                     )
                     
                     if new_properties:
-                        # Отправляем новые объявления в целевую группу
-                        await self._send_new_properties(user_id, new_properties, TARGET_GROUP_ID)
+                        # Отправляем новые объявления в тот чат, откуда был запущен мониторинг
+                        target_chat = settings.get("chat_id", TARGET_GROUP_ID)
+                        await self._send_new_properties(user_id, new_properties, target_chat)
                         
-                        # Уведомление о мониторинге - отправляем в целевую группу
+                        # Уведомление о мониторинге - отправляем в тот же чат
                         await self.bot.send_message(
-                            TARGET_GROUP_ID,
-                            f"🔍 **Мониторинг пользователя {user_id}:** найдено {len(new_properties)} новых объявлений!",
+                            target_chat,
+                            f"🔍 **Мониторинг:** найдено {len(new_properties)} новых объявлений!",
                             parse_mode="Markdown"
                         )
                     else:
@@ -601,7 +605,7 @@ class EnhancedPropertyBot:
         sent_urls = []
         target_chat = chat_id or user_id  # Используем chat_id, если задан, иначе user_id
         
-        # Получаем информацию о пользователе для группового чата
+        # Получаем информацию о пользователе только для специальной целевой группы
         user_info = ""
         if target_chat == TARGET_GROUP_ID:
             try:
@@ -834,6 +838,38 @@ class EnhancedPropertyBot:
             parse_mode="Markdown"
         )
         await callback.answer(f"✅ Добавлен: {region_name}")
+
+    async def callback_show_all_results(self, callback: CallbackQuery):
+        """Показать все найденные объявления"""
+        user_id = callback.from_user.id
+        chat_id = callback.message.chat.id  # ID чата, где была нажата кнопка
+        
+        # Получаем кэшированные результаты
+        results = await self.db.get_cached_search_results(user_id)
+        
+        if not results:
+            await callback.message.edit_text(
+                "❌ Результаты поиска не найдены",
+                reply_markup=get_main_menu_keyboard()
+            )
+            await callback.answer()
+            return
+        
+        await callback.message.edit_text(
+            f"📤 **Отправляю {len(results)} объявлений...**",
+            parse_mode="Markdown"
+        )
+        await callback.answer()
+        
+        # Отправляем в тот же чат, где была нажата кнопка
+        await self._send_new_properties(user_id, results, chat_id)
+        
+        await callback.message.edit_text(
+            f"✅ **Отправлено!**\n\n"
+            f"📤 {len(results)} объявлений отправлено в {'группу' if chat_id < 0 else 'личные сообщения'}",
+            reply_markup=get_main_menu_keyboard(),
+            parse_mode="Markdown"
+        )
 
 
 # Дополнительные обработчики будут добавлены в следующей части...
