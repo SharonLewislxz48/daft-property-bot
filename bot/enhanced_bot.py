@@ -174,6 +174,15 @@ class EnhancedPropertyBot:
             last_name=message.from_user.last_name
         )
         
+        # Обновляем chat_id если это необходимо
+        current_settings = await self.db.get_user_settings(message.from_user.id)
+        if current_settings and current_settings['chat_id'] != message.chat.id:
+            await self.db.update_user_settings(
+                user_id=message.from_user.id,
+                chat_id=message.chat.id
+            )
+            logger.info(f"Обновлен chat_id для пользователя {message.from_user.id}: {message.chat.id}")
+        
         welcome_text = "🏠 **Добро пожаловать в бот мониторинга недвижимости Daft.ie!**\\n\\n"
         
         if not user["exists"]:
@@ -564,13 +573,15 @@ class EnhancedPropertyBot:
                     )
                     
                     if new_properties:
-                        # Отправляем новые объявления в тот чат, откуда был запущен мониторинг
-                        target_chat = settings.get("chat_id", TARGET_GROUP_ID)
-                        await self._send_new_properties(user_id, new_properties, target_chat)
+                        # Получаем chat_id из настроек пользователя, fallback на TARGET_GROUP_ID
+                        target_chat_id = settings.get("chat_id", TARGET_GROUP_ID)
+                        
+                        # Отправляем новые объявления
+                        await self._send_new_properties(user_id, new_properties, target_chat_id)
                         
                         # Уведомление о мониторинге - отправляем в тот же чат
                         await self.bot.send_message(
-                            target_chat,
+                            target_chat_id,
                             f"🔍 **Мониторинг:** найдено {len(new_properties)} новых объявлений!",
                             parse_mode="Markdown"
                         )

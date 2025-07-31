@@ -59,6 +59,14 @@ class EnhancedDatabase:
                 # Поле уже существует
                 pass
             
+            # Проверяем и исправляем NULL chat_id для существующих пользователей
+            await db.execute("""
+                UPDATE user_settings 
+                SET chat_id = user_id 
+                WHERE chat_id IS NULL
+            """)
+            await db.commit()
+            
             # Таблица истории найденных объявлений
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS property_history (
@@ -168,9 +176,12 @@ class EnhancedDatabase:
                 row = await cursor.fetchone()
             
             if row:
+                # Проверяем, что chat_id не NULL, иначе используем user_id
+                chat_id = row[1] if row[1] is not None else user_id
+                
                 return {
                     "user_id": row[0],
-                    "chat_id": row[1],
+                    "chat_id": chat_id,  # Гарантированно не NULL
                     "regions": json.loads(row[2]) if row[2] else ["dublin-city"],
                     "min_bedrooms": row[3],
                     "max_price": row[4],
@@ -191,6 +202,10 @@ class EnhancedDatabase:
         if 'regions' in kwargs:
             kwargs['regions'] = json.dumps(kwargs['regions'])
         
+        # Логируем изменение chat_id
+        if 'chat_id' in kwargs:
+            logger.info(f"Обновляем chat_id для пользователя {user_id}: {kwargs['chat_id']}")
+        
         fields = []
         values = []
         for key, value in kwargs.items():
@@ -207,6 +222,7 @@ class EnhancedDatabase:
             await db.commit()
             
         logger.info(f"Обновлены настройки пользователя {user_id}: {kwargs}")
+        return True
         return True
     
     async def add_property_to_history(self, user_id: int, property_data: Dict[str, Any], 
