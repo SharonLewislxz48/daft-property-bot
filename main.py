@@ -133,7 +133,7 @@ class CombinedBot(EnhancedPropertyBot, EnhancedPropertyBotHandlers):
         self.dp.callback_query.register(self.callback_noop, F.data == "noop")
         self.dp.callback_query.register(self.callback_current_page, F.data == "current_page")
         self.dp.callback_query.register(self.callback_recent_searches, F.data == "recent_searches")
-        self.dp.callback_query.register(self.callback_show_all_results, F.data == "show_all_results")
+        # callback_show_all_results уже зарегистрирован в базовом классе EnhancedPropertyBot
         
         # Дополнительные состояния FSM
         from bot.bot_handlers import BotStates
