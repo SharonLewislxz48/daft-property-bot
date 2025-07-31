@@ -662,8 +662,22 @@ class EnhancedPropertyBot:
         
         logger.info(f"Category: {category}, Page: {page}")
         
-        await callback.message.edit_reply_markup(
-            reply_markup=get_category_regions_keyboard(category, page)
+        # Названия категорий
+        category_names = {
+            "dublin_areas": "🏙️ Районы Дублина",
+            "main_cities": "🌆 Основные города",
+            "republic_counties": "🗺️ Графства Ирландии", 
+            "northern_counties": "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Северная Ирландия"
+        }
+        
+        title = category_names.get(category, "Регионы")
+        
+        # Обновляем весь текст сообщения с правильным заголовком
+        await callback.message.edit_text(
+            f"{title}\n\n"
+            "Выберите регионы для поиска:",
+            reply_markup=get_category_regions_keyboard(category, page),
+            parse_mode="Markdown"
         )
         await callback.answer()
     
