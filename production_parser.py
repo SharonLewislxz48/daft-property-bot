@@ -45,30 +45,35 @@ class ProductionDaftParser:
         search_url = f"{self.base_url}/property-for-rent/{location}/houses?rentalPrice_to={max_price}&numBeds_from={min_bedrooms}&pageSize=20"
         
         async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    '--no-sandbox', 
-                    '--disable-setuid-sandbox', 
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-background-timer-throttling',
-                    '--disable-backgrounding-occluded-windows',
-                    '--disable-renderer-backgrounding'
-                ]
-            )
+            browser = None
+            context = None
+            page = None
             
-            context = await browser.new_context(
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                viewport={'width': 1920, 'height': 1080},
-                extra_http_headers={
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate',
-                    'Connection': 'keep-alive',
-                }
-            )
-            
-            page = await context.new_page()
+            try:
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=[
+                        '--no-sandbox', 
+                        '--disable-setuid-sandbox', 
+                        '--disable-blink-features=AutomationControlled',
+                        '--disable-background-timer-throttling',
+                        '--disable-backgrounding-occluded-windows',
+                        '--disable-renderer-backgrounding'
+                    ]
+                )
+                
+                context = await browser.new_context(
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    viewport={'width': 1920, 'height': 1080},
+                    extra_http_headers={
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Accept-Encoding': 'gzip, deflate',
+                        'Connection': 'keep-alive',
+                    }
+                )
+                
+                page = await context.new_page()
             
             try:
                 # Загружаем страницу поиска
@@ -110,12 +115,33 @@ class ProductionDaftParser:
                 print(f"📊 Результат: {len(results)} подходящих, {filtered_out} отфильтрованных")
                 return results
                 
+            except asyncio.CancelledError:
+                print("🛑 Парсинг был отменен")
+                raise  # Переподнимаем CancelledError для правильной обработки
+                
             except Exception as e:
                 print(f"❌ Ошибка поиска: {e}")
                 return []
                 
             finally:
-                await browser.close()
+                # Закрываем ресурсы в обратном порядке
+                try:
+                    if page:
+                        await page.close()
+                except:
+                    pass
+                    
+                try:
+                    if context:
+                        await context.close()
+                except:
+                    pass
+                    
+                try:
+                    if browser:
+                        await browser.close()
+                except:
+                    pass
     
     async def _get_results_count(self, page) -> int:
         """Получает общее количество результатов поиска"""

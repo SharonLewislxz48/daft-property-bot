@@ -523,6 +523,9 @@ class EnhancedPropertyBot:
                     limit=settings["max_results_per_search"] // len(settings["regions"])
                 )
                 all_results.extend(region_results)
+            except asyncio.CancelledError:
+                logger.info(f"Поиск в регионе {region} был отменен")
+                raise  # Переподнимаем для правильной обработки в мониторинге
             except Exception as e:
                 logger.error(f"Ошибка поиска в регионе {region}: {e}")
                 continue
