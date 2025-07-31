@@ -722,5 +722,46 @@ class EnhancedPropertyBot:
         )
         await callback.answer()
 
+    async def callback_add_region(self, callback: CallbackQuery):
+        """Добавление региона - переходим к категориям"""
+        await callback.message.edit_text(
+            "➕ **Добавить регион**\n\n"
+            "Выберите категорию регионов:",
+            reply_markup=get_region_categories_keyboard(),
+            parse_mode="Markdown"
+        )
+        await callback.answer()
+
+    async def callback_select_region(self, callback: CallbackQuery):
+        """Выбор региона для добавления"""
+        region_key = callback.data.replace("select_region_", "")
+        user_id = callback.from_user.id
+        
+        settings = await self.db.get_user_settings(user_id)
+        if not settings:
+            await callback.answer("❌ Настройки не найдены")
+            return
+        
+        current_regions = settings.get("regions", [])
+        
+        if region_key in current_regions:
+            await callback.answer("⚠️ Регион уже добавлен", show_alert=True)
+            return
+        
+        # Добавляем регион
+        current_regions.append(region_key)
+        await self.db.update_user_settings(user_id, regions=current_regions)
+        
+        region_name = ALL_LOCATIONS.get(region_key, region_key)
+        
+        await callback.message.edit_text(
+            f"✅ **Регион добавлен!**\n\n"
+            f"📍 {region_name}\n"
+            f"📊 Всего регионов: {len(current_regions)}",
+            reply_markup=get_main_menu_keyboard(),
+            parse_mode="Markdown"
+        )
+        await callback.answer(f"✅ Добавлен: {region_name}")
+
 
 # Дополнительные обработчики будут добавлены в следующей части...
