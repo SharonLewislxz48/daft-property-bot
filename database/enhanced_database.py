@@ -176,20 +176,57 @@ class EnhancedDatabase:
                 row = await cursor.fetchone()
             
             if row:
-                # Проверяем, что chat_id не NULL, иначе используем user_id
-                chat_id = row[1] if row[1] is not None else user_id
+                # Проверяем структуру таблицы - возможно chat_id не существует
+                async with db.execute("PRAGMA table_info(user_settings)") as cursor_info:
+                    columns = await cursor_info.fetchall()
+                    column_names = [col[1] for col in columns]
+                
+                # Адаптируемся к разным структурам таблицы
+                if 'chat_id' in column_names:
+                    # Новая структура с chat_id
+                    chat_id_index = column_names.index('chat_id')
+                    original_chat_id = row[chat_id_index]
+                    chat_id = original_chat_id if original_chat_id is not None else user_id
+                    
+                    if original_chat_id is None:
+                        logger.warning(f"Пользователь {user_id} имеет NULL chat_id, используем fallback: {chat_id}")
+                    else:
+                        logger.debug(f"Пользователь {user_id} имеет chat_id: {chat_id}")
+                        
+                    regions_index = column_names.index('regions')
+                    min_bedrooms_index = column_names.index('min_bedrooms') 
+                    max_price_index = column_names.index('max_price')
+                    monitoring_interval_index = column_names.index('monitoring_interval')
+                    max_results_per_search_index = column_names.index('max_results_per_search')
+                    is_monitoring_active_index = column_names.index('is_monitoring_active')
+                    created_at_index = column_names.index('created_at')
+                    updated_at_index = column_names.index('updated_at')
+                else:
+                    # Старая структура без chat_id
+                    chat_id = user_id  # Используем user_id как fallback
+                    logger.warning(f"Старая структура БД: пользователь {user_id} получает chat_id = user_id")
+                    
+                    # Старая структура: user_id, regions, min_bedrooms, max_price, monitoring_interval, max_results_per_search, is_monitoring_active, created_at, updated_at
+                    regions_index = 1
+                    min_bedrooms_index = 2
+                    max_price_index = 3
+                    monitoring_interval_index = 4
+                    max_results_per_search_index = 5
+                    is_monitoring_active_index = 6
+                    created_at_index = 7
+                    updated_at_index = 8
                 
                 return {
                     "user_id": row[0],
                     "chat_id": chat_id,  # Гарантированно не NULL
-                    "regions": json.loads(row[2]) if row[2] else ["dublin-city"],
-                    "min_bedrooms": row[3],
-                    "max_price": row[4],
-                    "monitoring_interval": row[5],
-                    "max_results_per_search": row[6],
-                    "is_monitoring_active": bool(row[7]),
-                    "created_at": row[8],
-                    "updated_at": row[9]
+                    "regions": json.loads(row[regions_index]) if row[regions_index] and isinstance(row[regions_index], str) else ["dublin-city"],
+                    "min_bedrooms": row[min_bedrooms_index],
+                    "max_price": row[max_price_index],
+                    "monitoring_interval": row[monitoring_interval_index],
+                    "max_results_per_search": row[max_results_per_search_index],
+                    "is_monitoring_active": bool(row[is_monitoring_active_index]),
+                    "created_at": row[created_at_index],
+                    "updated_at": row[updated_at_index]
                 }
             return None
     

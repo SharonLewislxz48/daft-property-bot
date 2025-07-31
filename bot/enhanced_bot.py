@@ -575,8 +575,10 @@ class EnhancedPropertyBot:
                     )
                     
                     if new_properties:
-                        # Получаем chat_id из настроек пользователя, fallback на TARGET_GROUP_ID
-                        target_chat_id = settings.get("chat_id", TARGET_GROUP_ID)
+                        # Используем chat_id из настроек пользователя (уже с fallback на user_id)
+                        target_chat_id = settings["chat_id"]  # Этот ID уже корректный из get_user_settings
+                        
+                        logger.info(f"Мониторинг: отправляем {len(new_properties)} объявлений пользователю {user_id} в чат {target_chat_id}")
                         
                         # Отправляем новые объявления
                         await self._send_new_properties(user_id, new_properties, target_chat_id)
