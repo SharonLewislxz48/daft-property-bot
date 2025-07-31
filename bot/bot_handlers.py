@@ -183,9 +183,20 @@ class EnhancedPropertyBotHandlers:
     
     async def callback_category_page(self, callback: CallbackQuery):
         """Обработчик пагинации категорий"""
-        data_parts = callback.data.split("_")
-        category = data_parts[2]
-        page = int(data_parts[3])
+        # Формат: category_page_{category}_{page}
+        logger.info(f"Callback data: {callback.data}")
+        data_parts = callback.data.split("_", 3)  # Разбиваем максимум на 4 части
+        logger.info(f"Data parts: {data_parts}")
+        
+        if len(data_parts) >= 4:
+            category = data_parts[2]
+            page = int(data_parts[3])
+        else:
+            # Fallback для старого формата
+            category = data_parts[2] if len(data_parts) > 2 else "dublin_areas"
+            page = int(data_parts[3]) if len(data_parts) > 3 else 0
+        
+        logger.info(f"Category: {category}, Page: {page}")
         
         await callback.message.edit_reply_markup(
             reply_markup=get_category_regions_keyboard(category, page)
