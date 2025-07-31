@@ -223,7 +223,6 @@ class EnhancedDatabase:
             
         logger.info(f"Обновлены настройки пользователя {user_id}: {kwargs}")
         return True
-        return True
     
     async def add_property_to_history(self, user_id: int, property_data: Dict[str, Any], 
                                      search_params: Dict[str, Any]) -> bool:
