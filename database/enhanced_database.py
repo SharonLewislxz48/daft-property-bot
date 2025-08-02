@@ -287,7 +287,59 @@ class EnhancedDatabase:
                 # Объявление уже существует для этого пользователя
                 return False
     
-    async def get_new_properties(self, user_id: int, properties: List[Dict[str, Any]], 
+    async def filter_recent_duplicates(self, properties: List[Dict[str, Any]], 
+                                     hours: int = 24) -> List[Dict[str, Any]]:
+        """
+        Фильтрует объявления, исключая те что уже встречались в последние N часов
+        
+        Args:
+            properties: Список объявлений для проверки
+            hours: Период для проверки дубликатов (по умолчанию 24 часа)
+            
+        Returns:
+            Список объявлений без недавних дубликатов
+        """
+        if not properties:
+            return []
+        
+        # Собираем все URL для проверки
+        property_urls = [prop.get('url') for prop in properties if prop.get('url')]
+        
+        if not property_urls:
+            return properties
+        
+        # Создаем placeholders для SQL запроса
+        placeholders = ', '.join(['?' for _ in property_urls])
+        
+        # Ищем объявления, которые уже встречались недавно
+        async with aiosqlite.connect(self.db_path) as db:
+            query = f"""
+                SELECT DISTINCT property_url 
+                FROM property_history 
+                WHERE property_url IN ({placeholders})
+                  AND found_at > datetime('now', '-{hours} hours')
+            """
+            
+            async with db.execute(query, property_urls) as cursor:
+                recent_urls = {row[0] for row in await cursor.fetchall()}
+        
+        # Фильтруем объявления, убирая недавние дубликаты
+        filtered_properties = []
+        duplicates_removed = 0
+        
+        for prop in properties:
+            prop_url = prop.get('url')
+            if prop_url and prop_url in recent_urls:
+                duplicates_removed += 1
+            else:
+                filtered_properties.append(prop)
+        
+        if duplicates_removed > 0:
+            logger.info(f"Отфильтровано {duplicates_removed} недавних дубликатов за последние {hours} часов")
+        
+        return filtered_properties
+
+    async def get_new_properties(self, user_id: int, properties: List[Dict[str, Any]],
                                 search_params: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Возвращает только новые объявления, которых нет в истории"""
         new_properties = []

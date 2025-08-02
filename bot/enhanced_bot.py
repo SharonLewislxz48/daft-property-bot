@@ -392,9 +392,12 @@ class EnhancedPropertyBot:
             execution_time = time.time() - start_time
             
             if results:
-                # Проверяем новые объявления
+                # Сначала фильтруем глобальные дубликаты
+                filtered_results = await self.db.filter_recent_duplicates(results, hours=24)
+                
+                # Затем проверяем новые объявления для пользователя
                 search_params = self._get_search_params(settings)
-                new_properties = await self.db.get_new_properties(user_id, results, search_params)
+                new_properties = await self.db.get_new_properties(user_id, filtered_results, search_params)
                 
                 # Логируем результат
                 await self.db.log_monitoring_session(
@@ -514,9 +517,12 @@ class EnhancedPropertyBot:
                 execution_time = time.time() - start_time
                 
                 if results:
-                    # Проверяем новые объявления
+                    # Сначала фильтруем глобальные дубликаты
+                    filtered_results = await self.db.filter_recent_duplicates(results, hours=24)
+                    
+                    # Затем проверяем новые объявления для пользователя
                     search_params = self._get_search_params(settings)
-                    new_properties = await self.db.get_new_properties(user_id, results, search_params)
+                    new_properties = await self.db.get_new_properties(user_id, filtered_results, search_params)
                     
                     # Логируем результат
                     await self.db.log_monitoring_session(

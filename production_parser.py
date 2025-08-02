@@ -131,7 +131,12 @@ class ProductionDaftParser:
                         print("    ❌ Не удалось получить данные")
                 
                 print(f"📊 Результат: {len(results)} подходящих, {filtered_out} отфильтрованных")
-                return results
+                
+                # Удаляем дубликаты перед возвратом результатов
+                unique_results = self._remove_duplicates(results)
+                
+                print(f"✅ Финальный результат: {len(unique_results)} уникальных объявлений")
+                return unique_results
                 
             except asyncio.CancelledError:
                 print("🛑 Парсинг был отменен")
@@ -293,6 +298,56 @@ class ProductionDaftParser:
         
         return None
     
+    def _remove_duplicates(self, properties: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Удаляет дубликаты объявлений на основе URL, адреса и цены
+        
+        Args:
+            properties: Список объявлений
+            
+        Returns:
+            Список объявлений без дубликатов
+        """
+        seen_properties = set()
+        unique_properties = []
+        duplicates_count = 0
+        
+        for prop in properties:
+            # Создаем уникальный ключ на основе URL (основной идентификатор)
+            url = prop.get('url', '')
+            if url:
+                # Нормализуем URL (убираем параметры запроса)
+                clean_url = url.split('?')[0].split('#')[0]
+                
+                if clean_url in seen_properties:
+                    duplicates_count += 1
+                    continue
+                
+                seen_properties.add(clean_url)
+            
+            # Дополнительно создаем ключ на основе характеристик для объявлений без URL
+            # или для двойной проверки
+            title = prop.get('title', '').lower().strip()
+            price = prop.get('price', 0)
+            bedrooms = prop.get('bedrooms', 0)
+            location = prop.get('location', '').lower().strip()
+            
+            # Создаем комбинированный ключ
+            char_key = f"{title}_{location}_{price}_{bedrooms}"
+            
+            if char_key in seen_properties:
+                duplicates_count += 1
+                continue
+            
+            seen_properties.add(char_key)
+            unique_properties.append(prop)
+        
+        if duplicates_count > 0:
+            print(f"🗑️ Удалено дубликатов: {duplicates_count}")
+            print(f"📊 Уникальных объявлений: {len(unique_properties)}")
+        
+        return unique_properties
+
     def _validate_property(self, property_data: Dict[str, Any], min_bedrooms: int, max_price: int) -> bool:
         """Валидация объявления по фильтрам и реалистичности данных"""
         
