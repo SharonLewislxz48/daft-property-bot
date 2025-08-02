@@ -1,0 +1,104 @@
+# Enhanced Bot v2.0 - Production Dockerfile
+FROM python:3.12-slim
+
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    sqlite3 \
+    # Playwright dependencies
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libxss1 \
+    libasound2 \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk1.0-0 \
+    libc6 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libexpat1 \
+    libfontconfig1 \
+    libgcc1 \
+    libgconf-2-4 \
+    libgdk-pixbuf2.0-0 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnspr4 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libstdc++6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создание пользователя для приложения
+RUN useradd -r -s /bin/bash -u 1001 daftbot
+
+# Создание директорий
+WORKDIR /app
+RUN mkdir -p /app/data /app/logs && chown -R daftbot:daftbot /app
+
+# Копирование файлов проекта
+COPY --chown=daftbot:daftbot requirements.txt ./
+COPY --chown=daftbot:daftbot . .
+
+# Установка Python зависимостей
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Установка Playwright браузеров
+RUN playwright install chromium && \
+    playwright install-deps chromium
+
+# Переключение на пользователя приложения
+USER daftbot
+
+# Создание скрипта инициализации БД
+RUN echo 'import asyncio\n\
+import sys\n\
+sys.path.append("/app")\n\
+from database.enhanced_database import EnhancedDatabase\n\
+\n\
+async def init_db():\n\
+    db = EnhancedDatabase("/app/data/enhanced_bot.db")\n\
+    await db.init_database()\n\
+    print("Database initialized")\n\
+\n\
+asyncio.run(init_db())' > init_db.py && \
+    python init_db.py && \
+    rm init_db.py
+
+# Настройка переменных окружения
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Открытие портов (если понадобится веб-интерфейс)
+EXPOSE 8080
+
+# Проверка здоровья контейнера
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import sqlite3; conn = sqlite3.connect('/app/data/enhanced_bot.db'); conn.close()" || exit 1
+
+# Команда запуска
+CMD ["python", "enhanced_main.py"]

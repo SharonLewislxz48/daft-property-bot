@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  daft-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.enhanced
+    container_name: daft-property-bot-enhanced
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./bot_config_production.json:/app/bot_config.json:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Dublin
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sqlite3; conn = sqlite3.connect('/app/data/enhanced_bot.db'); conn.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - daft-bot-network
+    # Ограничения ресурсов
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Опциональный сервис мониторинга (можно включить при необходимости)
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   container_name: watchtower
+  #   restart: unless-stopped
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   environment:
+  #     - WATCHTOWER_POLL_INTERVAL=300
+  #     - WATCHTOWER_CLEANUP=true
+  #   command: daft-property-bot-enhanced
+
+networks:
+  daft-bot-network:
+    driver: bridge
+
+volumes:
+  bot-data:
+  bot-logs:

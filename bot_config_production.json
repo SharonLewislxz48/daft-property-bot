@@ -1,0 +1,36 @@
+{
+    "telegram": {
+        "bot_token": "8219994646:AAGX6Ggqh8YkNJnfSruwBfTjMkQV73hTf6Y",
+        "group_id": -1002819366953
+    },
+    "database": {
+        "path": "data/enhanced_bot.db"
+    },
+    "logging": {
+        "level": "INFO",
+        "file": "logs/enhanced_bot.log"
+    },
+    "parser": {
+        "max_pages": 3,
+        "max_results": 100,
+        "timeout": 30000,
+        "duplicate_filter_hours": 24
+    },
+    "monitoring": {
+        "default_interval": 3600,
+        "min_interval": 300,
+        "max_interval": 86400
+    },
+    "regions": {
+        "default": ["dublin-city"],
+        "max_regions_per_user": 15
+    },
+    "limits": {
+        "max_price": 15000,
+        "min_price": 500,
+        "max_bedrooms": 10,
+        "min_bedrooms": 0,
+        "max_results_per_search": 200,
+        "telegram_delay_seconds": 3
+    }
+}
