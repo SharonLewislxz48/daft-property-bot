@@ -16,11 +16,12 @@ logger = logging.getLogger(__name__)
 from config.regions import ALL_LOCATIONS, LIMITS
 from bot.enhanced_keyboards import (
     get_settings_menu_keyboard, get_regions_menu_keyboard,
-    get_region_categories_keyboard, get_category_regions_keyboard,
+    get_region_categories_keyboard, get_add_region_categories_keyboard, get_category_regions_keyboard,
     get_popular_combinations_keyboard, get_user_regions_keyboard, get_bedrooms_keyboard,
     get_price_keyboard, get_interval_keyboard, get_main_menu_keyboard,
     get_statistics_keyboard
 )
+from bot.message_formatter import MessageFormatter
 
 # Состояния для FSM
 class BotStates(StatesGroup):
@@ -64,7 +65,7 @@ class EnhancedPropertyBotHandlers:
             await callback.message.edit_text(
                 settings_text,
                 reply_markup=get_settings_menu_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         except Exception as e:
             # Если сообщение не изменилось, просто отвечаем
@@ -78,21 +79,29 @@ class EnhancedPropertyBotHandlers:
     
     async def callback_manage_regions(self, callback: CallbackQuery):
         """Меню управления регионами"""
-        await callback.message.edit_text(
-            "🏘️ **Управление регионами поиска**\\n\\n"
-            "Выберите действие:",
-            reply_markup=get_regions_menu_keyboard(),
-            parse_mode="Markdown"
-        )
-        await callback.answer()
+        logger.info(f"🔥 callback_manage_regions вызван пользователем {callback.from_user.id}")
+        try:
+            keyboard = get_regions_menu_keyboard()
+            logger.info(f"🔥 Получена клавиатура с {len(keyboard.inline_keyboard)} рядами")
+            
+            await callback.message.edit_text(
+                MessageFormatter.regions_menu(),
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
+            logger.info("🔥 Сообщение успешно отредактировано")
+            await callback.answer()
+            logger.info("🔥 callback.answer() выполнен")
+        except Exception as e:
+            logger.error(f"🔥 Ошибка в callback_manage_regions: {e}")
+            await callback.answer("Произошла ошибка")
     
     async def callback_add_region(self, callback: CallbackQuery):
         """Добавление региона - переходим к категориям"""
         await callback.message.edit_text(
-            "➕ **Добавить регион**\\n\\n"
-            "Выберите категорию регионов:",
-            reply_markup=get_region_categories_keyboard(),
-            parse_mode="Markdown"
+            MessageFormatter.add_region_menu(),
+            reply_markup=get_add_region_categories_keyboard(),
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -113,7 +122,7 @@ class EnhancedPropertyBotHandlers:
             "➖ **Удалить регион**\\n\\n"
             "Выберите регион для удаления:",
             reply_markup=get_user_regions_keyboard(settings["regions"]),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -127,7 +136,7 @@ class EnhancedPropertyBotHandlers:
                 "📋 **Ваши регионы:** пусто\\n\\n"
                 "Добавьте регионы для поиска.",
                 reply_markup=get_regions_menu_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
             await callback.answer()
             return
@@ -141,7 +150,7 @@ class EnhancedPropertyBotHandlers:
             f"📋 **Ваши регионы:**\\n\\n{regions_list}\\n\\n"
             f"Всего регионов: {len(settings['regions'])}",
             reply_markup=get_regions_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -155,7 +164,7 @@ class EnhancedPropertyBotHandlers:
             f"🗂️ **Все доступные регионы:**\\n\\n{regions_text}\\n\\n"
             f"Всего регионов: {len(ALL_LOCATIONS)}",
             reply_markup=get_regions_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -216,7 +225,7 @@ class EnhancedPropertyBotHandlers:
             f"🏘️ {region_name}\\n\\n"
             f"Всего регионов: {len(new_regions)}",
             reply_markup=get_regions_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer(f"✅ Добавлен: {region_name}")
     
@@ -249,7 +258,7 @@ class EnhancedPropertyBotHandlers:
             f"🏘️ {region_name}\\n\\n"
             f"Осталось регионов: {len(new_regions)}",
             reply_markup=get_regions_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer(f"❌ Удален: {region_name}")
     
@@ -261,7 +270,7 @@ class EnhancedPropertyBotHandlers:
             "🛏️ **Минимальное количество спален**\\n\\n"
             "Выберите значение:",
             reply_markup=get_bedrooms_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -287,7 +296,7 @@ class EnhancedPropertyBotHandlers:
             f"✅ **Количество спален обновлено!**\\n\\n"
             f"🛏️ Минимум: {bedrooms_text}",
             reply_markup=get_settings_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer(f"✅ Установлено: {bedrooms_text}")
     
@@ -299,7 +308,7 @@ class EnhancedPropertyBotHandlers:
             "💰 **Максимальная цена**\\n\\n"
             "Выберите бюджет:",
             reply_markup=get_price_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -323,7 +332,7 @@ class EnhancedPropertyBotHandlers:
             f"✅ **Максимальная цена обновлена!**\\n\\n"
             f"💰 До €{price}",
             reply_markup=get_settings_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer(f"✅ Установлено: €{price}")
     
@@ -335,7 +344,7 @@ class EnhancedPropertyBotHandlers:
             f"✏️ **Введите максимальную цену**\\n\\n"
             f"Диапазон: €{LIMITS['max_price']['min']} - €{LIMITS['max_price']['max']}\\n\\n"
             f"Отправьте число (только цифры):",
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -359,7 +368,7 @@ class EnhancedPropertyBotHandlers:
                 f"✅ **Максимальная цена установлена!**\\n\\n"
                 f"💰 До €{price}",
                 reply_markup=get_settings_menu_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
             
         except ValueError:
@@ -376,7 +385,7 @@ class EnhancedPropertyBotHandlers:
             "⏰ **Интервал мониторинга**\\n\\n"
             "Как часто проверять новые объявления:",
             reply_markup=get_interval_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -402,7 +411,7 @@ class EnhancedPropertyBotHandlers:
             f"✅ **Интервал мониторинга обновлен!**\\n\\n"
             f"⏰ Каждые {interval_text}",
             reply_markup=get_settings_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer(f"✅ Установлено: {interval_text}")
     
@@ -441,7 +450,7 @@ class EnhancedPropertyBotHandlers:
         await callback.message.edit_text(
             stats_text,
             reply_markup=get_statistics_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -497,7 +506,7 @@ class EnhancedPropertyBotHandlers:
                 "⭐ **Популярные комбинации**\\n\\n"
                 "Выберите готовую комбинацию регионов:",
                 reply_markup=get_popular_combinations_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         else:
             # Названия категорий
@@ -513,7 +522,7 @@ class EnhancedPropertyBotHandlers:
                 f"{title}\\n\\n"
                 "Выберите регионы для поиска:",
                 reply_markup=get_category_regions_keyboard(category, page=0),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         
         await callback.answer()
@@ -553,7 +562,7 @@ class EnhancedPropertyBotHandlers:
                 f"📍 Регионы: {regions_text}\\n"
                 f"📊 Всего регионов: {len(regions)}",
                 reply_markup=get_main_menu_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         else:
             await callback.message.edit_text(
@@ -572,7 +581,7 @@ class EnhancedPropertyBotHandlers:
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="❌ Отмена", callback_data="manage_regions")]
             ]),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await state.set_state(BotStates.waiting_region_search)
         await callback.answer()
@@ -605,14 +614,14 @@ class EnhancedPropertyBotHandlers:
                         f"📍 {region_name}\n\n"
                         "Теперь этот регион будет включен в поиск.",
                         reply_markup=get_main_menu_keyboard(),
-                        parse_mode="Markdown"
+                        parse_mode="HTML"
                     )
                 else:
                     await message.answer(
                         f"⚠️ **Регион уже добавлен**\n\n"
                         f"📍 {region_name}",
                         reply_markup=get_main_menu_keyboard(),
-                        parse_mode="Markdown"
+                        parse_mode="HTML"
                     )
             else:
                 # Найдено несколько регионов
@@ -628,7 +637,7 @@ class EnhancedPropertyBotHandlers:
                 await message.answer(
                     text,
                     reply_markup=get_main_menu_keyboard(),
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
         else:
             await message.answer(
@@ -636,7 +645,7 @@ class EnhancedPropertyBotHandlers:
                 f"По запросу '{search_term}' ничего не найдено.\n"
                 "Попробуйте другое название.",
                 reply_markup=get_main_menu_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         
         await state.clear()
@@ -668,7 +677,7 @@ class EnhancedPropertyBotHandlers:
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
                 ]),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         else:
             await callback.message.edit_text(
@@ -678,7 +687,7 @@ class EnhancedPropertyBotHandlers:
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔙 Назад", callback_data="main_menu")]
                 ]),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         
         await callback.answer()
@@ -697,7 +706,7 @@ class EnhancedPropertyBotHandlers:
                     [InlineKeyboardButton(text="🔍 Новый поиск", callback_data="single_search")],
                     [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
                 ]),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
             await callback.answer()
             return
@@ -706,7 +715,7 @@ class EnhancedPropertyBotHandlers:
             f"📋 **Все найденные объявления ({len(results)})**\n\n"
             "Отправляю все объявления...",
             reply_markup=get_main_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         
         # Отправляем все результаты
@@ -729,7 +738,7 @@ class EnhancedPropertyBotHandlers:
                 await self.bot.send_message(
                     chat_id=user_id,
                     text=message,
-                    parse_mode="Markdown",
+                    parse_mode="HTML",
                     disable_web_page_preview=False
                 )
                 

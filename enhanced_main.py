@@ -38,39 +38,16 @@ class CombinedBot(EnhancedPropertyBot, EnhancedPropertyBotHandlers):
         # Вызываем базовую регистрацию
         super()._register_handlers()
         
-        # Добавляем дополнительные обработчики
+        # Добавляем дополнительные обработчики (не дублируя базовые)
         
-        # Настройки
-        self.dp.callback_query.register(self.callback_show_settings, F.data == "show_settings")
-        
-        # Управление регионами
+        # Управление регионами (дополнительные)
         self.dp.callback_query.register(self.callback_manage_regions, F.data == "manage_regions")
         self.dp.callback_query.register(self.callback_add_region, F.data == "add_region")
         self.dp.callback_query.register(self.callback_remove_region, F.data == "remove_region")
         self.dp.callback_query.register(self.callback_show_regions, F.data == "show_regions")
         self.dp.callback_query.register(self.callback_list_all_regions, F.data == "list_all_regions")
         
-        # Новые обработчики категорий
-        self.dp.callback_query.register(
-            self.callback_category_selection,
-            F.data.startswith("category_")
-        )
-        self.dp.callback_query.register(
-            self.callback_select_combo,
-            F.data.startswith("select_combo_")
-        )
-        self.dp.callback_query.register(
-            self.callback_category_page,
-            F.data.startswith("category_page_")
-        )
-        
-        # Пагинация регионов
-        self.dp.callback_query.register(
-            self.callback_region_page,
-            F.data.startswith("region_page_")
-        )
-        
-        # Выбор конкретных значений
+        # Выбор конкретных значений (дополнительные)
         self.dp.callback_query.register(
             self.callback_select_region,
             F.data.startswith("select_region_")
@@ -92,33 +69,19 @@ class CombinedBot(EnhancedPropertyBot, EnhancedPropertyBotHandlers):
             F.data.startswith("interval_")
         )
         
-        # Кастомные настройки
+        # Кастомные настройки (дополнительные)
         self.dp.callback_query.register(self.callback_custom_price, F.data == "custom_price")
         
-        # Статистика
+        # Статистика (дополнительная)
         self.dp.callback_query.register(
             self.callback_show_stats,
             F.data.startswith("stats_")
         )
         
-        # Основные обработчики из enhanced_bot.py
-        self.dp.callback_query.register(self.callback_main_menu, F.data == "main_menu")
-        self.dp.callback_query.register(self.callback_settings, F.data == "settings")
-        self.dp.callback_query.register(self.callback_statistics, F.data == "statistics")
-        self.dp.callback_query.register(self.callback_help, F.data == "help")
-        self.dp.callback_query.register(self.callback_start_monitoring, F.data == "start_monitoring")
-        self.dp.callback_query.register(self.callback_stop_monitoring, F.data == "stop_monitoring")
-        self.dp.callback_query.register(self.callback_single_search, F.data == "single_search")
-        
-        # Обработчики настроек
-        self.dp.callback_query.register(self.callback_set_bedrooms, F.data == "set_bedrooms")
-        self.dp.callback_query.register(self.callback_set_max_price, F.data == "set_max_price")
-        self.dp.callback_query.register(self.callback_set_interval, F.data == "set_interval")
-        
-        # Поиск регионов
+        # Поиск регионов (дополнительные)
         self.dp.callback_query.register(self.callback_search_region, F.data == "search_region")
         
-        # Служебные обработчики
+        # Служебные обработчики (дополнительные)
         self.dp.callback_query.register(self.callback_noop, F.data == "noop")
         self.dp.callback_query.register(self.callback_current_page, F.data == "current_page")
         self.dp.callback_query.register(self.callback_recent_searches, F.data == "recent_searches")

@@ -130,7 +130,8 @@ DEFAULT_SETTINGS = {
     "min_bedrooms": 3,
     "max_price": 2500,
     "monitoring_interval": 3600,  # 1 час в секундах
-    "max_results_per_search": 50
+    "max_results_per_search": 100,  # Увеличили лимит
+    "max_pages": 3  # Добавили параметр для количества страниц
 }
 
 # Лимиты для валидации (расширены для поддержки всей Ирландии)
@@ -139,7 +140,8 @@ LIMITS = {
     "max_price": {"min": 500, "max": 15000},  # Увеличен лимит для Дублина
     "monitoring_interval": {"min": 300, "max": 86400},  # от 5 минут до 24 часов
     "max_regions": 15,  # Увеличено для поддержки нескольких графств
-    "max_results_per_search": {"min": 10, "max": 100}
+    "max_results_per_search": {"min": 10, "max": 200},  # Увеличили максимум
+    "max_pages": {"min": 1, "max": 5}  # Лимит на количество страниц
 }
 
 # Популярные комбинации для быстрого доступа

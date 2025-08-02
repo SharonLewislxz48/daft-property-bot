@@ -52,12 +52,26 @@ def get_settings_menu_keyboard() -> InlineKeyboardMarkup:
 
 
 def get_regions_menu_keyboard() -> InlineKeyboardMarkup:
-    """Меню управления регионами - перенаправляет на категории"""
-    return get_region_categories_keyboard()
+    """Меню управления регионами"""
+    keyboard = [
+        [
+            InlineKeyboardButton(text="👀 Мои регионы", callback_data="show_regions"),
+            InlineKeyboardButton(text="➕ Добавить регион", callback_data="add_region")
+        ],
+        [
+            InlineKeyboardButton(text="❌ Удалить регион", callback_data="remove_region"),
+            InlineKeyboardButton(text="📋 Все регионы", callback_data="list_all_regions")
+        ],
+        [
+            InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings"),
+            InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-def get_region_categories_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура выбора категории регионов"""
+def get_add_region_categories_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора категории регионов для добавления"""
     keyboard = [
         [
             InlineKeyboardButton(text="🏙️ Районы Дублина (62)", callback_data="category_dublin_areas"),
@@ -72,10 +86,16 @@ def get_region_categories_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🔍 Поиск по названию", callback_data="search_region")
         ],
         [
+            InlineKeyboardButton(text="🔙 Назад к регионам", callback_data="manage_regions"),
             InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def get_region_categories_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура выбора категории регионов - алиас для совместимости"""
+    return get_add_region_categories_keyboard()
 
 
 def get_category_regions_keyboard(category: str, page: int = 0) -> InlineKeyboardMarkup:

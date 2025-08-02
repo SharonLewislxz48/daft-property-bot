@@ -25,7 +25,8 @@ class ProductionDaftParser:
         min_bedrooms: int = 3, 
         max_price: int = 2500, 
         location: str = "dublin-city", 
-        limit: int = 20
+        limit: int = 20,
+        max_pages: int = 3
     ) -> List[Dict[str, Any]]:
         """
         Ищет недвижимость на daft.ie с заданными параметрами
@@ -35,14 +36,15 @@ class ProductionDaftParser:
             max_price: Максимальная цена в евро
             location: Локация для поиска (dublin-city, cork, etc.)
             limit: Максимальное количество результатов
+            max_pages: Максимальное количество страниц для просмотра
             
         Returns:
             Список словарей с данными о недвижимости
         """
-        print(f"🔍 ПОИСК: {min_bedrooms}+ спален, до €{max_price}, {location}")
+        print(f"🔍 ПОИСК: {min_bedrooms}+ спален, до €{max_price}, {location} (до {max_pages} страниц)")
         
-        # Используем правильную структуру URL для daft.ie
-        search_url = f"{self.base_url}/property-for-rent/{location}/houses?rentalPrice_to={max_price}&numBeds_from={min_bedrooms}&pageSize=20"
+        # Увеличиваем pageSize для получения большего количества результатов на странице
+        page_size = min(50, limit)  # максимум 50 на страницу
         
         async with async_playwright() as p:
             browser = None
@@ -74,27 +76,43 @@ class ProductionDaftParser:
                 )
                 
                 page = await context.new_page()
-            
-            try:
-                # Загружаем страницу поиска
-                print(f"📄 Загружаем страницу поиска: {search_url}")
-                await page.goto(search_url, wait_until='networkidle', timeout=30000)
-                await page.wait_for_timeout(3000)
                 
-                # Получаем общее количество результатов
-                total_count = await self._get_results_count(page)
-                print(f"📊 Доступно объявлений: {total_count}")
+                all_property_urls = []
+                results = []
                 
-                # Собираем ссылки на объявления
-                property_urls = await self._collect_property_urls(page)
-                print(f"🔗 Найдено ссылок: {len(property_urls)}")
+                # Просматриваем несколько страниц
+                for page_num in range(max_pages):
+                    search_url = f"{self.base_url}/property-for-rent/{location}/houses?rentalPrice_to={max_price}&numBeds_from={min_bedrooms}&pageSize={page_size}&from={page_num * page_size}"
+                    
+                    # Загружаем страницу поиска
+                    print(f"📄 Загружаем страницу {page_num + 1}/{max_pages}: {search_url}")
+                    await page.goto(search_url, wait_until='networkidle', timeout=30000)
+                    await page.wait_for_timeout(3000)
+                    
+                    if page_num == 0:
+                        # Получаем общее количество результатов только на первой странице
+                        total_count = await self._get_results_count(page)
+                        print(f"📊 Доступно объявлений: {total_count}")
+                    
+                    # Собираем ссылки на объявления с текущей страницы
+                    page_property_urls = await self._collect_property_urls(page)
+                    print(f"🔗 Найдено ссылок на странице {page_num + 1}: {len(page_property_urls)}")
+                    
+                    if not page_property_urls:
+                        print(f"❌ На странице {page_num + 1} не найдено объявлений, останавливаем поиск")
+                        break
+                    
+                    all_property_urls.extend(page_property_urls)
+                    
+                    # Если уже собрали достаточно ссылок, останавливаемся
+                    if len(all_property_urls) >= limit:
+                        break
                 
                 # Ограничиваем количество
-                urls_to_process = property_urls[:limit]
-                print(f"📝 Будем обрабатывать: {len(urls_to_process)} объявлений")
+                urls_to_process = all_property_urls[:limit]
+                print(f"📝 Всего собрано ссылок: {len(all_property_urls)}, будем обрабатывать: {len(urls_to_process)} объявлений")
                 
                 # Парсим каждое объявление с фильтрацией
-                results = []
                 filtered_out = 0
                 
                 for i, url in enumerate(urls_to_process, 1):

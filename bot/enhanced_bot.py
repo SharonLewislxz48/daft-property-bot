@@ -26,6 +26,7 @@ from bot.enhanced_keyboards import (
     get_bedrooms_keyboard, get_price_keyboard, get_interval_keyboard, 
     get_confirmation_keyboard, get_back_to_main_keyboard, get_statistics_keyboard
 )
+from bot.message_formatter import MessageFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -68,17 +69,10 @@ class EnhancedPropertyBot:
         self.dp.callback_query.register(self.callback_single_search, F.data == "single_search")
         
         # Настройки
-        self.dp.callback_query.register(self.callback_manage_regions, F.data == "manage_regions")
         self.dp.callback_query.register(self.callback_set_bedrooms, F.data == "set_bedrooms")
         self.dp.callback_query.register(self.callback_set_max_price, F.data == "set_max_price")
         self.dp.callback_query.register(self.callback_set_interval, F.data == "set_interval")
         self.dp.callback_query.register(self.callback_show_settings, F.data == "show_settings")
-        
-        # Управление регионами
-        self.dp.callback_query.register(self.callback_add_region, F.data == "add_region")
-        self.dp.callback_query.register(self.callback_remove_region, F.data == "remove_region")
-        self.dp.callback_query.register(self.callback_show_regions, F.data == "show_regions")
-        self.dp.callback_query.register(self.callback_list_all_regions, F.data == "list_all_regions")
         
         # Категории регионов
         self.dp.callback_query.register(
@@ -183,52 +177,22 @@ class EnhancedPropertyBot:
             )
             logger.info(f"Обновлен chat_id для пользователя {message.from_user.id}: {message.chat.id}")
         
-        welcome_text = "🏠 **Добро пожаловать в бот мониторинга недвижимости Daft.ie!**\\n\\n"
-        
-        if not user["exists"]:
-            welcome_text += "🎉 Вы новый пользователь! Настройки по умолчанию уже созданы.\\n\\n"
-        
-        welcome_text += (
-            "✨ **Возможности бота:**\\n"
-            "🔍 Автоматический мониторинг новых объявлений\\n"
-            "⚙️ Гибкие настройки поиска (регионы, цена, спальни)\\n"
-            "📊 Статистика и история поиска\\n"
-            "📱 Уведомления о новых объявлениях\\n\\n"
-            "Выберите действие в меню ниже:"
-        )
+        welcome_text = MessageFormatter.welcome_message(not user["exists"])
         
         await message.answer(
             welcome_text,
             reply_markup=get_main_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     
     async def cmd_help(self, message: Message):
         """Обработчик команды /help"""
-        help_text = (
-            "❓ **Помощь по использованию бота**\\n\\n"
-            "**Основные функции:**\\n"
-            "• `/start` - Запуск бота и главное меню\\n"
-            "• `/status` - Статус мониторинга\\n"
-            "• `/help` - Эта справка\\n\\n"
-            "**Мониторинг:**\\n"
-            "▶️ Запустить - начать автоматический поиск\\n"
-            "⏹️ Остановить - прекратить мониторинг\\n"
-            "🔍 Разовый поиск - найти объявления сейчас\\n\\n"
-            "**Настройки:**\\n"
-            "🏘️ Регионы - выбор районов для поиска\\n"
-            "🛏️ Спальни - минимальное количество\\n"
-            "💰 Цена - максимальный бюджет\\n"
-            "⏰ Интервал - частота проверки\\n\\n"
-            "**Статистика:**\\n"
-            "📊 Просмотр найденных объявлений\\n"
-            "📋 История поиска\\n"
-        )
+        help_text = MessageFormatter.help_message()
         
         await message.answer(
             help_text,
             reply_markup=get_back_to_main_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     
     async def cmd_status(self, message: Message):
@@ -237,33 +201,19 @@ class EnhancedPropertyBot:
         settings = await self.db.get_user_settings(user_id)
         
         if not settings:
-            await message.answer("❌ Настройки не найдены. Используйте /start")
+            await message.answer(
+                MessageFormatter.error_message("no_settings"),
+                parse_mode="HTML"
+            )
             return
         
         is_monitoring = user_id in self.monitoring_tasks and not self.monitoring_tasks[user_id].done()
-        status_emoji = "✅" if is_monitoring else "⏸️"
-        status_text = "Активен" if is_monitoring else "Остановлен"
-        
-        regions_text = ", ".join([
-            ALL_LOCATIONS.get(region, region) for region in settings["regions"]
-        ])
-        
-        interval_text = self._format_interval(settings["monitoring_interval"])
-        
-        status_msg = (
-            f"📊 **Статус мониторинга:** {status_emoji} {status_text}\\n\\n"
-            f"⚙️ **Текущие настройки:**\\n"
-            f"🏘️ Регионы: {regions_text}\\n"
-            f"🛏️ Минимум спален: {settings['min_bedrooms']}\\n"
-            f"💰 Максимальная цена: €{settings['max_price']}\\n"
-            f"⏰ Интервал проверки: {interval_text}\\n"
-            f"📊 Лимит результатов: {settings['max_results_per_search']}"
-        )
+        status_text = MessageFormatter.monitoring_status(is_monitoring, settings)
         
         await message.answer(
-            status_msg,
+            status_text,
             reply_markup=get_main_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     
     # === ГЛАВНОЕ МЕНЮ ===
@@ -271,18 +221,18 @@ class EnhancedPropertyBot:
     async def callback_main_menu(self, callback: CallbackQuery):
         """Возврат в главное меню"""
         await callback.message.edit_text(
-            "🏠 **Главное меню**\\n\\nВыберите действие:",
+            MessageFormatter.main_menu(),
             reply_markup=get_main_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
     async def callback_settings(self, callback: CallbackQuery):
         """Меню настроек"""
         await callback.message.edit_text(
-            "⚙️ **Настройки бота**\\n\\nВыберите параметр для изменения:",
+            MessageFormatter.settings_menu(),
             reply_markup=get_settings_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -291,20 +241,19 @@ class EnhancedPropertyBot:
         user_id = callback.from_user.id
         
         # Получаем базовую статистику
-        total_properties = await self.db.get_user_properties_count(user_id)
+        stats = await self.db.get_user_statistics(user_id, days=7)
+        total_properties = stats.get('properties', {}).get('total', 0)
         
-        stats_text = (
-            f"📊 **Статистика**\\n\\n"
-            f"👤 Пользователь: {callback.from_user.first_name}\\n"
-            f"🏠 Найдено объявлений: {total_properties}\\n\\n"
-            "Выберите период для подробной статистики:"
+        stats_text = MessageFormatter.statistics_main(
+            callback.from_user.first_name or "Пользователь",
+            total_properties
         )
         
         try:
             await callback.message.edit_text(
                 stats_text,
                 reply_markup=get_statistics_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         except Exception as e:
             # Если сообщение не изменилось, просто отвечаем
@@ -332,7 +281,7 @@ class EnhancedPropertyBot:
         await callback.message.edit_text(
             help_text,
             reply_markup=get_back_to_main_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -380,7 +329,7 @@ class EnhancedPropertyBot:
             f"🔍 Поиск будет выполняться автоматически\\n\\n"
             f"Вы получите уведомление о каждом новом объявлении.",
             reply_markup=get_main_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer("Мониторинг запущен!")
     
@@ -408,7 +357,7 @@ class EnhancedPropertyBot:
             "⏹️ **Мониторинг остановлен**\\n\\n"
             "Автоматический поиск новых объявлений прекращен.",
             reply_markup=get_main_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer("Мониторинг остановлен!")
     
@@ -432,7 +381,7 @@ class EnhancedPropertyBot:
         
         await callback.message.edit_text(
             "🔍 **Выполняется поиск...**\\n\\nПожалуйста, подождите.",
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
         
@@ -464,7 +413,7 @@ class EnhancedPropertyBot:
                         f"🆕 Новых объявлений: {len(new_properties)}\\n"
                         f"⏱️ Время выполнения: {execution_time:.1f}с",
                         reply_markup=get_main_menu_keyboard(),
-                        parse_mode="Markdown"
+                        parse_mode="HTML"
                     )
                 else:
                     # Создаем клавиатуру с опцией показать все
@@ -480,7 +429,7 @@ class EnhancedPropertyBot:
                         f"⏱️ Время выполнения: {execution_time:.1f}с\\n\\n"
                         f"💡 Хотите увидеть все найденные объявления?",
                         reply_markup=keyboard,
-                        parse_mode="Markdown"
+                        parse_mode="HTML"
                     )
                     
                     # Сохраняем результаты в кэш для показа
@@ -490,7 +439,7 @@ class EnhancedPropertyBot:
                     "❌ **Объявления не найдены**\\n\\n"
                     "Попробуйте изменить параметры поиска.",
                     reply_markup=get_main_menu_keyboard(),
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
                 
         except Exception as e:
@@ -498,7 +447,7 @@ class EnhancedPropertyBot:
             await callback.message.edit_text(
                 f"❌ **Ошибка при поиске**\\n\\n{str(e)[:100]}...",
                 reply_markup=get_main_menu_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
     
     # === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
@@ -587,7 +536,7 @@ class EnhancedPropertyBot:
                         await self.bot.send_message(
                             target_chat_id,
                             f"🔍 **Мониторинг:** найдено {len(new_properties)} новых объявлений!",
-                            parse_mode="Markdown"
+                            parse_mode="HTML"
                         )
                     else:
                         logger.info(f"Мониторинг пользователя {user_id}: новых объявлений нет")
@@ -651,8 +600,13 @@ class EnhancedPropertyBot:
         for prop in properties:
             try:
                 message = self._format_property_message(prop, user_info)
-                await self.bot.send_message(target_chat, message, parse_mode="Markdown")
+                await self.bot.send_message(target_chat, message, parse_mode="HTML")
                 sent_urls.append(prop["url"])
+                
+                # Задержка 3 секунды между отправками
+                if len(properties) > 1:  # Добавляем задержку только если объявлений больше одного
+                    await asyncio.sleep(3)
+                    
             except Exception as e:
                 logger.error(f"Ошибка отправки объявления в чат {target_chat}: {e}")
         
@@ -661,34 +615,13 @@ class EnhancedPropertyBot:
             await self.db.mark_properties_as_sent(user_id, sent_urls)
     
     def _format_property_message(self, prop: Dict[str, Any], user_info: str = "") -> str:
-        """Форматирует объявление для отправки"""
-        title = prop.get('title', 'Без названия')
-        price = f"€{prop['price']}" if prop.get('price') else 'Цена не указана'
-        bedrooms = f"{prop['bedrooms']} спален" if prop.get('bedrooms') else 'Спальни не указаны'
-        location = prop.get('location', 'Локация не указана')
-        property_type = prop.get('property_type', 'Тип не указан')
-        url = prop.get('url', '')
-        
-        message = (
-            f"🏠 **{title}**\\n\\n"
-            f"💰 {price}\\n"
-            f"🛏️ {bedrooms}\\n"
-            f"📍 {location}\\n"
-            f"🏠 {property_type}"
-        )
+        """Форматирует объявление для отправки используя MessageFormatter"""
+        # Используем централизованный форматировщик
+        message = MessageFormatter.property_summary(prop)
         
         # Добавляем информацию о пользователе, если есть
         if user_info:
-            message += user_info
-        
-        message += "\\n\\n"
-        
-        if prop.get('description'):
-            desc = prop['description'][:150] + "..." if len(prop['description']) > 150 else prop['description']
-            message += f"📝 {desc}\\n\\n"
-        
-        if url:
-            message += f"🔗 [Посмотреть объявление]({url})"
+            message += f"\n\n<i>{user_info}</i>"
         
         return message
 
@@ -703,7 +636,7 @@ class EnhancedPropertyBot:
                 "⭐ **Популярные комбинации**\n\n"
                 "Выберите готовую комбинацию регионов:",
                 reply_markup=get_popular_combinations_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         else:
             # Названия категорий
@@ -719,7 +652,7 @@ class EnhancedPropertyBot:
                 f"{title}\n\n"
                 "Выберите регионы для поиска:",
                 reply_markup=get_category_regions_keyboard(category, page=0),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         
         await callback.answer()
@@ -756,7 +689,7 @@ class EnhancedPropertyBot:
             f"{title}\n\n"
             "Выберите регионы для поиска:",
             reply_markup=get_category_regions_keyboard(category, page),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
     
@@ -795,7 +728,7 @@ class EnhancedPropertyBot:
                 f"📍 Регионы: {regions_text}\n"
                 f"📊 Всего регионов: {len(regions)}",
                 reply_markup=get_main_menu_keyboard(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
         else:
             await callback.message.edit_text(
@@ -803,26 +736,6 @@ class EnhancedPropertyBot:
                 reply_markup=get_main_menu_keyboard()
             )
         
-        await callback.answer()
-
-    async def callback_manage_regions(self, callback: CallbackQuery):
-        """Меню управления регионами"""
-        await callback.message.edit_text(
-            "🏘️ **Управление регионами поиска**\n\n"
-            "Выберите действие:",
-            reply_markup=get_regions_menu_keyboard(),
-            parse_mode="Markdown"
-        )
-        await callback.answer()
-
-    async def callback_add_region(self, callback: CallbackQuery):
-        """Добавление региона - переходим к категориям"""
-        await callback.message.edit_text(
-            "➕ **Добавить регион**\n\n"
-            "Выберите категорию регионов:",
-            reply_markup=get_region_categories_keyboard(),
-            parse_mode="Markdown"
-        )
         await callback.answer()
 
     async def callback_select_region(self, callback: CallbackQuery):
@@ -852,7 +765,7 @@ class EnhancedPropertyBot:
             f"📍 {region_name}\n"
             f"📊 Всего регионов: {len(current_regions)}",
             reply_markup=get_main_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer(f"✅ Добавлен: {region_name}")
 
@@ -873,7 +786,7 @@ class EnhancedPropertyBot:
         
         await callback.message.edit_text(
             f"📤 **Отправляю {len(results)} объявлений в группу...**",
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         await callback.answer()
         
@@ -886,7 +799,7 @@ class EnhancedPropertyBot:
             f"📤 {len(results)} объявлений отправлено в группу\n"
             f"💬 Chat ID: {GROUP_CHAT_ID}",
             reply_markup=get_main_menu_keyboard(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
 
 

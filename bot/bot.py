@@ -496,7 +496,8 @@ class EnhancedPropertyBot:
                     min_bedrooms=settings["min_bedrooms"],
                     max_price=settings["max_price"],
                     location=region,
-                    limit=settings["max_results_per_search"] // len(settings["regions"])
+                    limit=settings["max_results_per_search"] // len(settings["regions"]),
+                    max_pages=settings.get("max_pages", 3)
                 )
                 all_results.extend(region_results)
             except Exception as e:
