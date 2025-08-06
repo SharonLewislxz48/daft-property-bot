@@ -15,11 +15,15 @@ cd /path/to/daftparser
 ### 1. Подключение к серверу
 ```bash
 ssh username@your-server-ip
-cd /path/to/daftparser  # Путь к проекту на сервере
+cd /opt/daft-property-bot  # Путь к проекту на сервере
 ```
 
-### 2. Получение обновлений
+### 2. Исправление git ownership и получение обновлений
 ```bash
+# Исправляем проблему с git ownership
+git config --global --add safe.directory /opt/daft-property-bot
+
+# Получаем обновления
 git pull origin enhanced-bot-v2.0
 ```
 

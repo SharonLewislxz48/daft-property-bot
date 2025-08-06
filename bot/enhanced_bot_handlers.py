@@ -53,12 +53,12 @@ class EnhancedPropertyBotHandlers:
         interval_text = self._format_interval(settings["monitoring_interval"])
         
         settings_text = (
-            f"⚙️ **Ваши текущие настройки:**\\n\\n"
-            f"🏘️ **Регионы поиска:**\\n{regions_text}\\n\\n"
-            f"🛏️ **Минимум спален:** {settings['min_bedrooms']}\\n"
-            f"💰 **Максимальная цена:** €{settings['max_price']}\\n"
-            f"⏰ **Интервал мониторинга:** {interval_text}\\n"
-            f"📊 **Лимит результатов:** {settings['max_results_per_search']}"
+            f"⚙️ <b>Ваши текущие настройки:</b>\n\n"
+            f"🏘️ <b>Регионы поиска:</b>\n{regions_text}\n\n"
+            f"🛏️ <b>Минимум спален:</b> {settings['min_bedrooms']}\n"
+            f"💰 <b>Максимальная цена:</b> €{settings['max_price']:,}\n"
+            f"⏰ <b>Интервал мониторинга:</b> {interval_text}\n"
+            f"📊 <b>Лимит результатов:</b> {settings['max_results_per_search']}"
         )
         
         try:
