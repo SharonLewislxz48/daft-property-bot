@@ -119,7 +119,7 @@ class EnhancedPropertyBotHandlers:
             return
         
         await callback.message.edit_text(
-            "➖ **Удалить регион**\\n\\n"
+            "➖ <b>Удалить регион</b>\n\n"
             "Выберите регион для удаления:",
             reply_markup=get_user_regions_keyboard(settings["regions"]),
             parse_mode="HTML"
@@ -133,7 +133,7 @@ class EnhancedPropertyBotHandlers:
         
         if not settings or not settings["regions"]:
             await callback.message.edit_text(
-                "📋 **Ваши регионы:** пусто\\n\\n"
+                "📋 <b>Ваши регионы:</b> пусто\n\n"
                 "Добавьте регионы для поиска.",
                 reply_markup=get_regions_menu_keyboard(),
                 parse_mode="HTML"
@@ -141,13 +141,13 @@ class EnhancedPropertyBotHandlers:
             await callback.answer()
             return
         
-        regions_list = "\\n".join([
+        regions_list = "\n".join([
             f"• {ALL_LOCATIONS.get(region, region)}"
             for region in settings["regions"]
         ])
         
         await callback.message.edit_text(
-            f"📋 **Ваши регионы:**\\n\\n{regions_list}\\n\\n"
+            f"📋 <b>Ваши регионы:</b>\n\n{regions_list}\n\n"
             f"Всего регионов: {len(settings['regions'])}",
             reply_markup=get_regions_menu_keyboard(),
             parse_mode="HTML"
@@ -156,12 +156,12 @@ class EnhancedPropertyBotHandlers:
     
     async def callback_list_all_regions(self, callback: CallbackQuery):
         """Показать все доступные регионы"""
-        regions_text = "\\n".join([
+        regions_text = "\n".join([
             f"• {name}" for name in sorted(ALL_LOCATIONS.values())
         ])
         
         await callback.message.edit_text(
-            f"🗂️ **Все доступные регионы:**\\n\\n{regions_text}\\n\\n"
+            f"🗂️ <b>Все доступные регионы:</b>\n\n{regions_text}\n\n"
             f"Всего регионов: {len(ALL_LOCATIONS)}",
             reply_markup=get_regions_menu_keyboard(),
             parse_mode="HTML"
@@ -221,8 +221,8 @@ class EnhancedPropertyBotHandlers:
         region_name = ALL_LOCATIONS.get(region_key, region_key)
         
         await callback.message.edit_text(
-            f"✅ **Регион добавлен!**\\n\\n"
-            f"🏘️ {region_name}\\n\\n"
+            f"✅ <b>Регион добавлен!</b>\n\n"
+            f"🏘️ {region_name}\n\n"
             f"Всего регионов: {len(new_regions)}",
             reply_markup=get_regions_menu_keyboard(),
             parse_mode="HTML"
@@ -254,8 +254,8 @@ class EnhancedPropertyBotHandlers:
         region_name = ALL_LOCATIONS.get(region_key, region_key)
         
         await callback.message.edit_text(
-            f"✅ **Регион удален!**\\n\\n"
-            f"🏘️ {region_name}\\n\\n"
+            f"✅ <b>Регион удален!</b>\n\n"
+            f"🏘️ {region_name}\n\n"
             f"Осталось регионов: {len(new_regions)}",
             reply_markup=get_regions_menu_keyboard(),
             parse_mode="HTML"
@@ -267,7 +267,7 @@ class EnhancedPropertyBotHandlers:
     async def callback_set_bedrooms(self, callback: CallbackQuery):
         """Настройка количества спален"""
         await callback.message.edit_text(
-            "🛏️ **Минимальное количество спален**\\n\\n"
+            "🛏️ <b>Минимальное количество спален</b>\n\n"
             "Выберите значение:",
             reply_markup=get_bedrooms_keyboard(),
             parse_mode="HTML"
@@ -293,7 +293,7 @@ class EnhancedPropertyBotHandlers:
         bedrooms_text = "Студия" if bedrooms == 0 else f"{bedrooms} спален"
         
         await callback.message.edit_text(
-            f"✅ **Количество спален обновлено!**\\n\\n"
+            f"✅ <b>Количество спален обновлено!</b>\n\n"
             f"🛏️ Минимум: {bedrooms_text}",
             reply_markup=get_settings_menu_keyboard(),
             parse_mode="HTML"
@@ -305,7 +305,7 @@ class EnhancedPropertyBotHandlers:
     async def callback_set_max_price(self, callback: CallbackQuery):
         """Настройка максимальной цены"""
         await callback.message.edit_text(
-            "💰 **Максимальная цена**\\n\\n"
+            "💰 <b>Максимальная цена</b>\n\n"
             "Выберите бюджет:",
             reply_markup=get_price_keyboard(),
             parse_mode="HTML"
@@ -329,7 +329,7 @@ class EnhancedPropertyBotHandlers:
         await self.db.update_user_settings(user_id, max_price=price)
         
         await callback.message.edit_text(
-            f"✅ **Максимальная цена обновлена!**\\n\\n"
+            f"✅ <b>Максимальная цена обновлена!</b>\n\n"
             f"💰 До €{price}",
             reply_markup=get_settings_menu_keyboard(),
             parse_mode="HTML"
@@ -341,8 +341,8 @@ class EnhancedPropertyBotHandlers:
         await state.set_state(BotStates.waiting_custom_price)
         
         await callback.message.edit_text(
-            f"✏️ **Введите максимальную цену**\\n\\n"
-            f"Диапазон: €{LIMITS['max_price']['min']} - €{LIMITS['max_price']['max']}\\n\\n"
+            f"✏️ <b>Введите максимальную цену</b>\n\n"
+            f"Диапазон: €{LIMITS['max_price']['min']} - €{LIMITS['max_price']['max']}\n\n"
             f"Отправьте число (только цифры):",
             parse_mode="HTML"
         )
@@ -365,7 +365,7 @@ class EnhancedPropertyBotHandlers:
             await self.db.update_user_settings(user_id, max_price=price)
             
             await message.answer(
-                f"✅ **Максимальная цена установлена!**\\n\\n"
+                f"✅ <b>Максимальная цена установлена!</b>\n\n"
                 f"💰 До €{price}",
                 reply_markup=get_settings_menu_keyboard(),
                 parse_mode="HTML"
@@ -382,7 +382,7 @@ class EnhancedPropertyBotHandlers:
     async def callback_set_interval(self, callback: CallbackQuery):
         """Настройка интервала мониторинга"""
         await callback.message.edit_text(
-            "⏰ **Интервал мониторинга**\\n\\n"
+            "⏰ <b>Интервал мониторинга</b>\n\n"
             "Как часто проверять новые объявления:",
             reply_markup=get_interval_keyboard(),
             parse_mode="HTML"
@@ -408,7 +408,7 @@ class EnhancedPropertyBotHandlers:
         interval_text = self._format_interval(interval)
         
         await callback.message.edit_text(
-            f"✅ **Интервал мониторинга обновлен!**\\n\\n"
+            f"✅ <b>Интервал мониторинга обновлен!</b>\n\n"
             f"⏰ Каждые {interval_text}",
             reply_markup=get_settings_menu_keyboard(),
             parse_mode="HTML"
@@ -425,25 +425,25 @@ class EnhancedPropertyBotHandlers:
         stats = await self.db.get_user_statistics(user_id, days)
         
         stats_text = (
-            f"📊 **Статистика за {days} дней**\\n\\n"
-            f"**🏠 Объявления:**\\n"
-            f"• Всего найдено: {stats['properties']['total']}\\n"
-            f"• Отправлено: {stats['properties']['sent']}\\n"
+            f"📊 <b>Статистика за {days} дней</b>\n\n"
+            f"<b>🏠 Объявления:</b>\n"
+            f"• Всего найдено: {stats['properties']['total']}\n"
+            f"• Отправлено: {stats['properties']['sent']}\n"
         )
         
         if stats['properties']['total'] > 0:
             stats_text += (
-                f"• Средняя цена: €{stats['properties']['avg_price']}\\n"
-                f"• Диапазон цен: €{stats['properties']['min_price']} - €{stats['properties']['max_price']}\\n\\n"
+                f"• Средняя цена: €{stats['properties']['avg_price']:,.2f}\n"
+                f"• Диапазон цен: €{stats['properties']['min_price']:,} - €{stats['properties']['max_price']:,}\n\n"
             )
         else:
-            stats_text += "\\n"
+            stats_text += "\n"
         
         stats_text += (
-            f"**🔍 Мониторинг:**\\n"
-            f"• Всего сессий: {stats['monitoring']['total_sessions']}\\n"
-            f"• Успешных: {stats['monitoring']['successful_sessions']}\\n"
-            f"• Среднее время: {stats['monitoring']['avg_execution_time']}с\\n"
+            f"<b>🔍 Мониторинг:</b>\n"
+            f"• Всего сессий: {stats['monitoring']['total_sessions']}\n"
+            f"• Успешных: {stats['monitoring']['successful_sessions']}\n"
+            f"• Среднее время: {stats['monitoring']['avg_execution_time']:.2f}с\n"
             f"• Новых объявлений: {stats['monitoring']['total_new_properties']}"
         )
         
@@ -503,7 +503,7 @@ class EnhancedPropertyBotHandlers:
         
         if category == "popular":
             await callback.message.edit_text(
-                "⭐ **Популярные комбинации**\\n\\n"
+                "⭐ <b>Популярные комбинации</b>\n\n"
                 "Выберите готовую комбинацию регионов:",
                 reply_markup=get_popular_combinations_keyboard(),
                 parse_mode="HTML"
@@ -519,7 +519,7 @@ class EnhancedPropertyBotHandlers:
             
             title = category_names.get(category, "Регионы")
             await callback.message.edit_text(
-                f"{title}\\n\\n"
+                f"{title}\n\n"
                 "Выберите регионы для поиска:",
                 reply_markup=get_category_regions_keyboard(category, page=0),
                 parse_mode="HTML"
@@ -558,8 +558,8 @@ class EnhancedPropertyBotHandlers:
                 regions_text += f" и еще {len(regions) - 3}"
             
             await callback.message.edit_text(
-                f"✅ **Выбрана комбинация: {combo_name}**\\n\\n"
-                f"📍 Регионы: {regions_text}\\n"
+                f"✅ <b>Выбрана комбинация: {combo_name}</b>\n\n"
+                f"📍 Регионы: {regions_text}\n"
                 f"📊 Всего регионов: {len(regions)}",
                 reply_markup=get_main_menu_keyboard(),
                 parse_mode="HTML"
@@ -575,7 +575,7 @@ class EnhancedPropertyBotHandlers:
     async def callback_search_region(self, callback: CallbackQuery, state: FSMContext):
         """Обработчик поиска региона по названию"""
         await callback.message.edit_text(
-            "🔍 **Поиск региона**\n\n"
+            "🔍 <b>Поиск региона</b>\n\n"
             "Введите название региона для поиска:\n"
             "(например: Dublin, Cork, Galway)",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -610,7 +610,7 @@ class EnhancedPropertyBotHandlers:
                 
                 if success:
                     await message.answer(
-                        f"✅ **Регион добавлен**\n\n"
+                        f"✅ <b>Регион добавлен</b>\n\n"
                         f"📍 {region_name}\n\n"
                         "Теперь этот регион будет включен в поиск.",
                         reply_markup=get_main_menu_keyboard(),
@@ -618,14 +618,14 @@ class EnhancedPropertyBotHandlers:
                     )
                 else:
                     await message.answer(
-                        f"⚠️ **Регион уже добавлен**\n\n"
+                        f"⚠️ <b>Регион уже добавлен</b>\n\n"
                         f"📍 {region_name}",
                         reply_markup=get_main_menu_keyboard(),
                         parse_mode="HTML"
                     )
             else:
                 # Найдено несколько регионов
-                text = f"🔍 **Найдено регионов: {len(found_regions)}**\n\n"
+                text = f"🔍 <b>Найдено регионов: {len(found_regions)}</b>\n\n"
                 for i, (region_id, region_name) in enumerate(found_regions[:10], 1):
                     text += f"{i}. {region_name}\n"
                 
@@ -641,7 +641,7 @@ class EnhancedPropertyBotHandlers:
                 )
         else:
             await message.answer(
-                f"❌ **Регион не найден**\n\n"
+                f"❌ <b>Регион не найден</b>\n\n"
                 f"По запросу '{search_term}' ничего не найдено.\n"
                 "Попробуйте другое название.",
                 reply_markup=get_main_menu_keyboard(),
@@ -666,7 +666,7 @@ class EnhancedPropertyBotHandlers:
         recent_searches = self.db.get_user_recent_searches(user_id, limit=5)
         
         if recent_searches:
-            text = "📋 **Недавние поиски**\n\n"
+            text = "📋 <b>Недавние поиски</b>\n\n"
             for i, search in enumerate(recent_searches, 1):
                 text += f"{i}. {search['regions']} | "
                 text += f"💰 до {search['max_price']}€ | "
@@ -681,7 +681,7 @@ class EnhancedPropertyBotHandlers:
             )
         else:
             await callback.message.edit_text(
-                "📋 **Недавние поиски**\n\n"
+                "📋 <b>Недавние поиски</b>\n\n"
                 "У вас пока нет недавних поисков.\n"
                 "Начните мониторинг, чтобы увидеть историю.",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -700,7 +700,7 @@ class EnhancedPropertyBotHandlers:
         
         if not results:
             await callback.message.edit_text(
-                "❌ **Нет сохраненных результатов**\n\n"
+                "❌ <b>Нет сохраненных результатов</b>\n\n"
                 "Выполните поиск заново.",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🔍 Новый поиск", callback_data="single_search")],
@@ -712,7 +712,7 @@ class EnhancedPropertyBotHandlers:
             return
         
         await callback.message.edit_text(
-            f"📋 **Все найденные объявления ({len(results)})**\n\n"
+            f"📋 <b>Все найденные объявления ({len(results)})</b>\n\n"
             "Отправляю все объявления...",
             reply_markup=get_main_menu_keyboard(),
             parse_mode="HTML"
@@ -761,12 +761,12 @@ class EnhancedPropertyBotHandlers:
         location = prop.get('location', 'Местоположение не указано')
         url = prop.get('url', '')
         
-        message = f"🏠 **{title}**\n\n"
-        message += f"💰 **Цена:** {price}\n"
-        message += f"🛏️ **Спален:** {bedrooms}\n"
-        message += f"📍 **Местоположение:** {location}\n"
+        message = f"🏠 <b>{title}</b>\n\n"
+        message += f"💰 <b>Цена:</b> {price}\n"
+        message += f"🛏️ <b>Спален:</b> {bedrooms}\n"
+        message += f"📍 <b>Местоположение:</b> {location}\n"
         
         if url:
-            message += f"\n🔗 [Подробнее на Daft.ie]({url})"
+            message += f"\n🔗 <a href='{url}'>Подробнее на Daft.ie</a>"
         
         return message
