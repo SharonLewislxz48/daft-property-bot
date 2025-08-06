@@ -1,8 +1,10 @@
 import asyncio
 import logging
 import re
+import json
+import aiohttp
 import random
-from typing import List, Optional, Dict, Set
+from typing import List, Optional, Dict, Set, Any
 from datetime import datetime
 from playwright.async_api import async_playwright, Page, Browser
 from bs4 import BeautifulSoup
@@ -91,6 +93,200 @@ class PlaywrightDaftParser:
         if hasattr(self, 'playwright'):
             await self.playwright.stop()
     
+    def extract_json_data(self, html_content: str) -> List[Dict[str, Any]]:
+        """Извлекает JSON данные из React приложения"""
+        try:
+            # Поиск script элемента с __NEXT_DATA__
+            pattern = r'<script id="__NEXT_DATA__"[^>]*>([^<]+)</script>'
+            match = re.search(pattern, html_content)
+            
+            if not match:
+                logger.error("__NEXT_DATA__ script не найден")
+                return []
+            
+            json_str = match.group(1)
+            data = json.loads(json_str)
+            
+            # Извлекаем listings из структуры данных
+            listings = data.get('props', {}).get('pageProps', {}).get('listings', [])
+            logger.info(f"Найдено объявлений в JSON: {len(listings)}")
+            
+            # Парсим каждое объявление
+            properties = []
+            for item in listings:
+                listing = item.get('listing', {})
+                if not listing:
+                    continue
+                    
+                property_data = self.parse_json_listing(listing)
+                if property_data:
+                    properties.append(property_data)
+            
+            return properties
+            
+        except Exception as e:
+            logger.error(f"Ошибка парсинга JSON: {e}")
+            return []
+    
+    def parse_json_listing(self, listing: Dict[str, Any]) -> Optional[Property]:
+        """Парсит отдельное объявление из JSON"""
+        try:
+            # Основная информация
+            property_id = str(listing.get('id', ''))
+            title = listing.get('title', '')
+            price = listing.get('price', '')
+            bedrooms_str = listing.get('numBedrooms', '')
+            property_type = listing.get('propertyType', '')
+            
+            # URL для объявления
+            seo_path = listing.get('seoFriendlyPath', '')
+            url = f"https://www.daft.ie{seo_path}" if seo_path else ""
+            
+            # Местоположение (извлекаем из заголовка)
+            location_parts = title.split(',')
+            if len(location_parts) >= 2:
+                location = ', '.join(location_parts[-2:]).strip()
+            else:
+                location = title
+            
+            # Дата публикации
+            publish_date = listing.get('publishDate')
+            date_published = None
+            if publish_date:
+                try:
+                    date_published = datetime.fromtimestamp(publish_date / 1000)
+                except:
+                    pass
+            
+            # Изображения
+            media = listing.get('media', {})
+            images = media.get('images', [])
+            image_urls = []
+            for img in images[:3]:  # Берем первые 3 изображения
+                if 'size720x480' in img:
+                    image_urls.append(img['size720x480'])
+            
+            # Продавец
+            seller = listing.get('seller', {})
+            agent_name = seller.get('name', '')
+            phone = seller.get('phone', '')
+            
+            # Энергоэффективность
+            ber = listing.get('ber', {})
+            energy_rating = ber.get('rating', '') if ber else ''
+            
+            # Парсим количество спален
+            bedrooms = self._parse_bedrooms_from_json(bedrooms_str)
+            
+            # Парсим цену
+            monthly_rent = self._parse_price(price)
+            
+            # Создаем объект Property
+            property_obj = Property(
+                id=property_id,
+                title=title,
+                address=location,
+                price=monthly_rent,  # Исправлено: используем price вместо monthly_rent
+                bedrooms=bedrooms,
+                bathrooms=None,  # Пока не извлекаем из JSON
+                property_type=property_type,
+                url=url,
+                image_url=image_urls[0] if image_urls else None,  # Исправлено: используем image_url вместо images
+                description=None,
+                area=self._extract_area_from_address(title),
+                posted_date=date_published  # Исправлено: используем posted_date вместо date_published
+            )
+            
+            logger.debug(f"Создано объявление: {title} - {price}")
+            return property_obj
+            
+        except Exception as e:
+            logger.error(f"Ошибка парсинга объявления из JSON: {e}")
+            return None
+    
+    def _parse_bedrooms_from_json(self, bedrooms_str: str) -> int:
+        """Парсит количество спален из JSON строки"""
+        try:
+            # Ищем числа в строке типа "1, 2, 3 & 5 bed" или "3 Bed"
+            numbers = re.findall(r'\d+', bedrooms_str)
+            if numbers:
+                # Берем первое число как основное количество спален
+                return int(numbers[0])
+        except (ValueError, AttributeError):
+            pass
+        return 1  # По умолчанию
+    
+    async def search_properties_json(self, filters: SearchFilters, max_pages: int = 5) -> List[Property]:
+        """Поиск объявлений с использованием JSON API (новый метод)"""
+        properties = []
+        seen_ids: Set[str] = set()
+        
+        logger.info(f"Starting JSON search with filters: city={filters.city}, max_price={filters.max_price}, min_bedrooms={filters.min_bedrooms}")
+        
+        # Создаем HTTP session для requests
+        async with aiohttp.ClientSession() as session:
+            for page in range(1, max_pages + 1):
+                try:
+                    url = self._build_search_url(filters, page)
+                    logger.info(f"Processing page {page}: {url}")
+                    
+                    # Делаем HTTP запрос с реалистичными заголовками
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache',
+                        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                        'Sec-Ch-Ua-Mobile': '?0',
+                        'Sec-Ch-Ua-Platform': '"Linux"',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'none',
+                        'Sec-Fetch-User': '?1',
+                        'Upgrade-Insecure-Requests': '1'
+                    }
+                    
+                    # Небольшая задержка
+                    await asyncio.sleep(1)
+                    
+                    async with session.get(url, headers=headers) as response:
+                        if response.status != 200:
+                            logger.error(f"HTTP ошибка {response.status} для страницы {page}")
+                            continue
+                        
+                        html_content = await response.text()
+                        logger.info(f"Получено {len(html_content)} символов HTML для страницы {page}")
+                        
+                        # Извлекаем и парсим JSON данные
+                        page_properties = self.extract_json_data(html_content)
+                        
+                        if not page_properties:
+                            logger.info(f"Нет объявлений на странице {page}, останавливаем пагинацию")
+                            break
+                        
+                        # Фильтруем дубликаты
+                        new_properties = []
+                        for prop in page_properties:
+                            if prop and prop.id not in seen_ids:
+                                seen_ids.add(prop.id)
+                                new_properties.append(prop)
+                        
+                        properties.extend(new_properties)
+                        logger.info(f"Добавлено {len(new_properties)} новых объявлений со страницы {page}")
+                        
+                        # Обновляем статистику
+                        self.stats['total_pages_processed'] += 1
+                        self.stats['successful_parses'] += len(new_properties)
+                        
+                except Exception as e:
+                    logger.error(f"Ошибка обработки страницы {page}: {e}")
+                    continue
+        
+        logger.info(f"JSON поиск завершен. Найдено {len(properties)} уникальных объявлений")
+        return properties
+    
     def _build_search_url(self, filters: SearchFilters, page: int = 1) -> str:
         """Построение URL для поиска с фильтрами"""
         # Используем корректную структуру URL для daft.ie
@@ -110,7 +306,7 @@ class PlaywrightDaftParser:
         
         # Добавляем пагинацию только если не первая страница
         if page > 1:
-            params["from"] = str((page - 1) * 20)
+            params["page"] = str(page)
         
         # Добавляем районы если указаны
         if filters.areas:
@@ -400,109 +596,11 @@ class PlaywrightDaftParser:
             return None
     
     async def search_properties(self, filters: SearchFilters, max_pages: int = 5) -> List[Property]:
-        """Поиск объявлений с фильтрами"""
-        properties = []
-        seen_ids: Set[str] = set()
+        """Поиск объявлений с фильтрами (обновленный метод с JSON парсингом)"""
+        logger.info(f"Используем JSON подход для парсинга")
+        return await self.search_properties_json(filters, max_pages)
         
-        # Статистика
-        total_found = 0
-        successful_parses = 0
-        failed_parses = 0
-        
-        logger.info(f"Starting search with filters: city={filters.city}, max_price={filters.max_price}, min_bedrooms={filters.min_bedrooms}, areas={filters.areas}")
-        
-        for page in range(1, max_pages + 1):
-            try:
-                url = self._build_search_url(filters, page)
-                logger.info(f"Processing page {page}: {url}")
-                
-                html_content = await self._get_page_content(url)
-                
-                if not html_content:
-                    logger.warning(f"No content received for page {page}")
-                    continue
-                
-                soup = BeautifulSoup(html_content, 'html.parser')
-                
-                # Улучшенный поиск элементов объявлений
-                property_links = []
-                
-                # Ищем все ссылки на объявления
-                all_links = soup.find_all("a", href=True)
-                for link in all_links:
-                    href = link.get("href")
-                    if href and ("/for-rent/" in href or "/property-for-rent/" in href):
-                        # Проверяем, что это не навигационная ссылка
-                        if not any(nav in href for nav in ["/page/", "/search/", "?from=", "#"]):
-                            property_links.append(link)
-                
-                logger.info(f"Found {len(property_links)} property links on page {page}")
-                total_found += len(property_links)
-                
-                if len(property_links) == 0:
-                    logger.info(f"No properties found on page {page}, stopping pagination")
-                    break
-                
-                # Парсим каждое объявление
-                page_properties = []
-                for link in property_links:
-                    try:
-                        # Получаем контейнер с информацией об объявлении
-                        container = link
-                        # Поднимаемся до контейнера с полной информацией
-                        for _ in range(5):
-                            parent = container.find_parent()
-                            if parent and (parent.name in ['div', 'article', 'li'] or 
-                                         'property' in parent.get('class', []) if parent.get('class') else False):
-                                container = parent
-                            else:
-                                break
-                        
-                        property_obj = self._parse_property_from_element(str(container))
-                        if property_obj and property_obj.id not in seen_ids:
-                            # Проверяем фильтры
-                            if self._matches_filters(property_obj, filters):
-                                page_properties.append(property_obj)
-                                seen_ids.add(property_obj.id)
-                                successful_parses += 1
-                            else:
-                                logger.debug(f"Property {property_obj.title} filtered out")
-                        elif property_obj:
-                            logger.debug(f"Duplicate property: {property_obj.id}")
-                        else:
-                            failed_parses += 1
-                            
-                    except Exception as e:
-                        logger.debug(f"Error parsing individual property: {e}")
-                        failed_parses += 1
-                        continue
-                
-                properties.extend(page_properties)
-                logger.info(f"Page {page}: {len(page_properties)} valid properties found, {len(page_properties)} added")
-                
-                # Если на странице мало объявлений, возможно это последняя страница
-                if len(property_links) < 10:
-                    logger.info(f"Few properties on page {page}, likely last page")
-                    break
-                
-                # Задержка между страницами
-                await asyncio.sleep(2)
-                    
-            except Exception as e:
-                logger.error(f"Error processing page {page}: {e}")
-                failed_parses += 1
-                continue
-        
-        # Финальная статистика
-        success_rate = (successful_parses / total_found * 100) if total_found > 0 else 0
-        logger.info(f"Search completed:")
-        logger.info(f"  Total property links found: {total_found}")
-        logger.info(f"  Successfully parsed: {successful_parses}")
-        logger.info(f"  Failed to parse: {failed_parses}")
-        logger.info(f"  Success rate: {success_rate:.1f}%")
-        logger.info(f"  Unique properties returned: {len(properties)}")
-        
-        return properties
+        # Старый код поиска объявлений удален - теперь используется JSON подход
     
     def _matches_filters(self, property_obj: Property, filters: SearchFilters) -> bool:
         """Проверка соответствия объявления фильтрам"""
