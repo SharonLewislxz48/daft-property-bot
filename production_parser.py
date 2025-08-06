@@ -82,7 +82,12 @@ class ProductionDaftParser:
                 
                 # Просматриваем несколько страниц
                 for page_num in range(max_pages):
-                    search_url = f"{self.base_url}/property-for-rent/{location}/houses?rentalPrice_to={max_price}&numBeds_from={min_bedrooms}&pageSize={page_size}&from={page_num * page_size}"
+                    if page_num == 0:
+                        # Первая страница без параметра page
+                        search_url = f"{self.base_url}/property-for-rent/{location}/houses?rentalPrice_to={max_price}&numBeds_from={min_bedrooms}"
+                    else:
+                        # Остальные страницы с параметром page
+                        search_url = f"{self.base_url}/property-for-rent/{location}/houses?rentalPrice_to={max_price}&numBeds_from={min_bedrooms}&page={page_num + 1}"
                     
                     # Загружаем страницу поиска
                     print(f"📄 Загружаем страницу {page_num + 1}/{max_pages}: {search_url}")
