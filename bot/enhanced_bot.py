@@ -592,17 +592,18 @@ class EnhancedPropertyBot:
                     if user_row:
                         username, first_name = user_row
                         if username:
-                            user_info = f"\n👤 От пользователя: @{username}"
+                            user_info = f"\n👤 От пользователя: @{username} @Sergiock @bestdance53"
                         elif first_name:
-                            user_info = f"\n👤 От пользователя: {first_name}"
+                            user_info = f"\n👤 От пользователя: {first_name} @Sergiock @bestdance53"
                         else:
-                            user_info = f"\n👤 От пользователя: {user_id}"
+                            user_info = f"\n👤 От пользователя: {user_id} @Sergiock @bestdance53"
                     else:
-                        user_info = f"\n👤 От пользователя: {user_id}"
+                        user_info = f"\n👤 От пользователя: {user_id} @Sergiock @bestdance53"
             except Exception as e:
                 logger.error(f"Ошибка получения информации о пользователе {user_id}: {e}")
-                user_info = f"\n👤 От пользователя: {user_id}"
-        
+                # Используем user_id в качестве fallback с дополнительными тегами
+                user_info = f"\n👤 От пользователя: {user_id} @Sergiock @bestdance53"
+
         for prop in properties:
             try:
                 message = self._format_property_message(prop, user_info)
